@@ -1,0 +1,112 @@
+import { bigint, boolean, date, decimal, int, json, mysqlTable, primaryKey, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+
+const id=(name="id")=>bigint(name,{mode:"number"}).autoincrement().primaryKey();
+
+export const accreditationAgencies=mysqlTable("accreditation_agencies",{
+  id:id(),
+  code:varchar("code",{length:80}).notNull(),
+  name:varchar("name",{length:255}).notNull(),
+  agencyType:varchar("agency_type",{length:40}).notNull().default("LAM"),
+  websiteUrl:varchar("website_url",{length:1000}),
+  status:varchar("status",{length:30}).notNull().default("ACTIVE"),
+  createdAt:timestamp("created_at").defaultNow().notNull(),
+  updatedAt:timestamp("updated_at").defaultNow().notNull(),
+},t=>[uniqueIndex("accreditation_agency_code_uq").on(t.code)]);
+
+export const accreditationFrameworks=mysqlTable("accreditation_frameworks",{
+  id:id(),
+  agencyId:bigint("agency_id",{mode:"number"}).notNull(),
+  code:varchar("code",{length:120}).notNull(),
+  name:varchar("name",{length:500}).notNull(),
+  instrumentYear:int("instrument_year"),
+  instrumentType:varchar("instrument_type",{length:120}),
+  educationLevel:varchar("education_level",{length:80}),
+  modality:varchar("modality",{length:80}).default("TATAP_MUKA"),
+  regulationReference:varchar("regulation_reference",{length:500}),
+  sourceUrl:varchar("source_url",{length:1200}),
+  versionNumber:int("version_number").notNull().default(1),
+  lifecycleStatus:varchar("lifecycle_status",{length:30}).notNull().default("DRAFT"),
+  effectiveFrom:date("effective_from",{mode:"string"}),
+  effectiveTo:date("effective_to",{mode:"string"}),
+  notes:text("notes"),
+  createdAt:timestamp("created_at").defaultNow().notNull(),
+  updatedAt:timestamp("updated_at").defaultNow().notNull(),
+},t=>[uniqueIndex("accreditation_framework_code_version_uq").on(t.agencyId,t.code,t.versionNumber)]);
+
+export const accreditationClusters=mysqlTable("accreditation_clusters",{
+  id:id(),
+  frameworkId:bigint("framework_id",{mode:"number"}).notNull(),
+  code:varchar("code",{length:80}).notNull(),
+  name:varchar("name",{length:255}).notNull(),
+  semanticGroup:varchar("semantic_group",{length:50}),
+  description:text("description"),
+  sequence:int("sequence").notNull().default(1),
+  status:varchar("status",{length:30}).notNull().default("ACTIVE"),
+},t=>[uniqueIndex("accreditation_cluster_framework_code_uq").on(t.frameworkId,t.code)]);
+
+export const accreditationCriteria=mysqlTable("accreditation_criteria",{
+  id:id(),
+  frameworkId:bigint("framework_id",{mode:"number"}).notNull(),
+  code:varchar("code",{length:80}).notNull(),
+  name:varchar("name",{length:500}).notNull(),
+  description:text("description"),
+  sequence:int("sequence").notNull().default(1),
+  status:varchar("status",{length:30}).notNull().default("ACTIVE"),
+},t=>[uniqueIndex("accreditation_criterion_framework_code_uq").on(t.frameworkId,t.code)]);
+
+export const accreditationIndicators=mysqlTable("accreditation_indicators",{
+  id:id(),
+  frameworkId:bigint("framework_id",{mode:"number"}).notNull(),
+  criterionId:bigint("criterion_id",{mode:"number"}).notNull(),
+  code:varchar("code",{length:100}).notNull(),
+  name:varchar("name",{length:700}).notNull(),
+  description:text("description"),
+  unit:varchar("unit",{length:80}),
+  weight:decimal("weight",{precision:10,scale:4}),
+  scoringRule:json("scoring_rule"),
+  sequence:int("sequence").notNull().default(1),
+  status:varchar("status",{length:30}).notNull().default("ACTIVE"),
+  createdAt:timestamp("created_at").defaultNow().notNull(),
+  updatedAt:timestamp("updated_at").defaultNow().notNull(),
+},t=>[uniqueIndex("accreditation_indicator_framework_code_uq").on(t.frameworkId,t.code)]);
+
+export const accreditationIndicatorClusters=mysqlTable("accreditation_indicator_clusters",{
+  indicatorId:bigint("indicator_id",{mode:"number"}).notNull(),
+  clusterId:bigint("cluster_id",{mode:"number"}).notNull(),
+  isPrimary:boolean("is_primary").notNull().default(false),
+},t=>[primaryKey({columns:[t.indicatorId,t.clusterId]})]);
+
+export const accreditationEvidenceRequirements=mysqlTable("accreditation_evidence_requirements",{
+  id:id(),
+  indicatorId:bigint("indicator_id",{mode:"number"}).notNull(),
+  code:varchar("code",{length:100}).notNull(),
+  description:text("description").notNull(),
+  required:boolean("required").notNull().default(true),
+  acceptableSubjectTypes:json("acceptable_subject_types"),
+  status:varchar("status",{length:30}).notNull().default("ACTIVE"),
+},t=>[uniqueIndex("accreditation_evidence_indicator_code_uq").on(t.indicatorId,t.code)]);
+
+export const accreditationIndicatorMappings=mysqlTable("accreditation_indicator_mappings",{
+  id:id(),
+  indicatorId:bigint("indicator_id",{mode:"number"}).notNull(),
+  sourceSubjectType:varchar("source_subject_type",{length:120}).notNull(),
+  sourceField:varchar("source_field",{length:255}),
+  filterConfig:json("filter_config"),
+  transformRule:json("transform_rule"),
+  status:varchar("status",{length:30}).notNull().default("ACTIVE"),
+  createdAt:timestamp("created_at").defaultNow().notNull(),
+});
+
+export const studyProgramAccreditationFrameworks=mysqlTable("study_program_accreditation_frameworks",{
+  id:id(),
+  studyProgramId:bigint("study_program_id",{mode:"number"}).notNull(),
+  frameworkId:bigint("framework_id",{mode:"number"}).notNull(),
+  isPrimary:boolean("is_primary").notNull().default(true),
+  assignmentStatus:varchar("assignment_status",{length:30}).notNull().default("ACTIVE"),
+  assignedFrom:date("assigned_from",{mode:"string"}),
+  assignedTo:date("assigned_to",{mode:"string"}),
+  officialCoverageReference:varchar("official_coverage_reference",{length:1000}),
+  notes:text("notes"),
+  createdAt:timestamp("created_at").defaultNow().notNull(),
+  updatedAt:timestamp("updated_at").defaultNow().notNull(),
+},t=>[uniqueIndex("study_program_framework_uq").on(t.studyProgramId,t.frameworkId)]);
