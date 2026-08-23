@@ -1,4 +1,11 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/src/lib/auth";
+import Link from "next/link";
+import {redirect} from "next/navigation";
+import {getSession} from "@/src/lib/auth";
 export const dynamic="force-dynamic";
-export default async function InternalHome(){const session=await getSession();if(!session)redirect("/internal/login");redirect("/internal/accreditation/cockpit")}
+const steps=[
+ {no:"01",title:"Isi data domain",text:"Masukkan data yang sudah ditetapkan: kurikulum, KPI, SDM, laboratorium, penelitian, PkM, mahasiswa, lulusan, kerja sama, dan berita.",links:[["Akademik & OBE","/internal/academic"],["Sumber daya & tridharma","/internal/resources"],["Administrasi & berita","/internal/admin"]]},
+ {no:"02",title:"Ukur dan analisis",text:"Isi target dan realisasi KPI. Sistem menghitung capaian; evaluator menulis analisis, temuan, rekomendasi, serta tindak lanjut.",links:[["Pengukuran & evaluasi","/internal/workflow"]]},
+ {no:"03",title:"Nilai per indikator akreditasi",text:"Hubungkan data sebagai bukti, isi perhitungan, analisis, evaluasi, dan catatan LED pada INPUT, PROCESS, atau OUTPUT/OUTCOME.",links:[["Buka cockpit akreditasi","/internal/accreditation/cockpit"]]},
+ {no:"04",title:"Ajukan dan publikasikan",text:"Admin Jurusan mengajukan record. Pejabat berwenang menyetujui; hanya bagian yang dipilih untuk publik yang tampil di portal.",links:[["Lihat portal publik","/"],["Informasi akreditasi","/akreditasi"]]}
+];
+export default async function InternalHome(){const session=await getSession();if(!session)redirect("/internal/login");const scope=session.scopes?.[0];return <main className="workspace-home"><section className="workspace-welcome"><div><span className="workspace-kicker">Ruang kerja internal</span><h1>Selamat datang, {session.name}</h1><p>Kerjakan data dari masukan sampai publikasi melalui empat tahap yang jelas.</p></div><div className="workspace-identity"><span>Peran</span><strong>{session.roles.join(", ")}</strong><span>Cakupan kerja</span><strong>Organisasi #{scope?.organizationId??"—"}{scope?.studyProgramId?` · Prodi #${scope.studyProgramId}`:" · seluruh Prodi dalam Jurusan"}</strong></div></section><section className="workspace-flow">{steps.map(step=><article key={step.no}><div className="workspace-number">{step.no}</div><div><h2>{step.title}</h2><p>{step.text}</p><div className="workspace-actions">{step.links.map(([label,href])=><Link key={href} href={href}>{label}<span>→</span></Link>)}</div></div></article>)}</section><aside className="workspace-note"><strong>Batas kewenangan Admin Jurusan</strong><p>Anda dapat mengisi dan memperbarui data dalam lingkup Jurusan, melakukan pengukuran/evaluasi, menyiapkan berita, serta mengajukan publikasi. Persetujuan akhir tetap mengikuti RBAC dan lifecycle.</p></aside></main>}
