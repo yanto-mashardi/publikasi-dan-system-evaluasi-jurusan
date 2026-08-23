@@ -44,4 +44,4 @@ async function main(){
  for(const p of POLICIES){const[found]=await db.select().from(publicationPolicies).where(and(eq(publicationPolicies.subjectType,p.subjectType),eq(publicationPolicies.status,"ACTIVE"))).limit(1);if(!found)await db.insert(publicationPolicies).values({subjectType:p.subjectType,policyVersion:1,allowedFields:p.allowedFields,requiredLifecycleStatus:p.requiredLifecycleStatus,requiresApproval:true,status:"ACTIVE"});else await db.update(publicationPolicies).set({allowedFields:p.allowedFields,requiredLifecycleStatus:p.requiredLifecycleStatus,requiresApproval:true}).where(eq(publicationPolicies.id,found.id));}
  console.log("Foundation seed selesai.");
 }
-main().catch(e=>{console.error(e);process.exit(1)});
+main().then(()=>process.exit(0)).catch(e=>{console.error(e);process.exit(1)});
