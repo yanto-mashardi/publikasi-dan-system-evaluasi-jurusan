@@ -1,0 +1,60 @@
+publication_policy:
+  default_visibility: INTERNAL
+
+  rules:
+    vision:
+      requires_status: EFFECTIVE
+      requires_approval: true
+      public_fields:
+        - title
+        - statement
+        - version
+        - effective_from
+
+    mission:
+      requires_status: EFFECTIVE
+      requires_approval: true
+      public_fields:
+        - statement
+        - sequence
+        - version
+
+    kpi_measurement:
+      requires_status: APPROVED
+      requires_approval: true
+      public_fields:
+        - indicator_name
+        - period
+        - target_value
+        - actual_value
+        - achievement_percent
+        - status
+        - public_summary
+        - followup_progress
+
+    evaluation:
+      requires_status: APPROVED
+      requires_approval: true
+      public_fields:
+        - subject_title
+        - period
+        - public_summary
+        - recommendation_summary
+        - followup_progress
+
+    accreditation:
+      public_fields:
+        - program_name
+        - accreditor
+        - official_status
+        - decree_number
+        - effective_date
+        - expiry_date
+
+  always_private:
+    - personal_data
+    - raw_audit_notes
+    - reviewer_identity
+    - respondent_identity
+    - private_evidence
+    - credentials
