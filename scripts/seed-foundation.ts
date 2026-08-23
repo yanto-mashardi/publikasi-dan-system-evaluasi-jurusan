@@ -15,10 +15,11 @@ const ROLE_GRANTS:Record<string,string[]>={
  VIEWER_INTERNAL:["internal.read"]
 };
 const POLICIES=[
- {subjectType:"STRATEGIC_STATEMENT",requiredLifecycleStatus:"EFFECTIVE",allowedFields:["statementType","statement","versionNumber","effectiveFrom"]},
+ {subjectType:"STRATEGIC_STATEMENT",requiredLifecycleStatus:"EFFECTIVE",allowedFields:["statementType","statement","versionNumber","effectiveFrom","studyProgramId"]},
  {subjectType:"KPI_MEASUREMENT",requiredLifecycleStatus:"APPROVED",allowedFields:["kpi","period","targetValue","actualValue","achievementPercent","status","publicSummary"]},
  {subjectType:"EVALUATION",requiredLifecycleStatus:"APPROVED",allowedFields:["subject","period","publicSummary","recommendationSummary","followupProgress"]},
- {subjectType:"NEWS_ARTICLE",requiredLifecycleStatus:"APPROVED",allowedFields:["title","slug","excerpt","body","coverImageUrl","category","featured","publishedAt"]}
+ {subjectType:"NEWS_ARTICLE",requiredLifecycleStatus:"APPROVED",allowedFields:["title","slug","excerpt","body","coverImageUrl","category","featured","publishedAt"]},
+ {subjectType:"CURRICULUM",requiredLifecycleStatus:"EFFECTIVE",allowedFields:["studyProgram","code","title","versionNumber","academicYearStart","academicYearEnd","totalCredits","description","graduateProfiles","cpl","courses","evaluationHistory"]}
 ];
 
 async function main(){
