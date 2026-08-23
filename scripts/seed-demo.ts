@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { requireDb } from "../src/db";
-import { evaluations, followups, kpiMeasurements, kpis, kpiTargets, publicationPolicies, publications, recommendations, strategicGoals, strategicPlans, strategicStatements, studyPrograms, users } from "../src/db/schema";
+import { evaluations, followups, kpiMeasurements, kpis, kpiTargets, organizations, publicationPolicies, publications, recommendations, strategicGoals, strategicPlans, strategicStatements, studyPrograms, users } from "../src/db/schema";
 import { cpl, curricula, graduateProfiles } from "../src/db/schema-phase5";
 import { communityServiceProjects, cooperations, graduateOutcomeStats, laboratoryEquipment, laboratoryK3lChecks, laboratoryProfiles, laboratoryUsage, laboratories, personnel, researchProjects, studentAnnualStats } from "../src/db/schema-phase6";
 import { accreditationFrameworks, studyProgramAccreditationFrameworks } from "../src/db/schema-accreditation";
@@ -14,13 +14,14 @@ async function main() {
     ? await db.select().from(users).where(eq(users.email, process.env.BOOTSTRAP_ADMIN_EMAIL)).limit(1)
     : await db.select().from(users).limit(1);
   if (!admin) throw new Error("Bootstrap admin terlebih dahulu sebelum menjalankan seed demo.");
-  const [program] = await db.select().from(studyPrograms).where(eq(studyPrograms.code, "D3-NAUTIKA")).limit(1);
+  const [program] = await db.select().from(studyPrograms).where(eq(studyPrograms.status, "ACTIVE")).limit(1);
   if (!program) throw new Error("Foundation seed belum dijalankan.");
+  const [organization] = await db.select().from(organizations).where(eq(organizations.id, program.organizationId)).limit(1);
 
   let [plan] = await db.select().from(strategicPlans).where(eq(strategicPlans.title, "CONTOH - Renstra UPPS 2025-2029")).limit(1);
   if (!plan) { const result = await db.insert(strategicPlans).values({ organizationId: program.organizationId, title: "CONTOH - Renstra UPPS 2025-2029", periodStart: 2025, periodEnd: 2029, lifecycleStatus: "EFFECTIVE", effectiveFrom: new Date("2025-01-01") }); [plan] = await db.select().from(strategicPlans).where(eq(strategicPlans.id, Number(result[0].insertId))).limit(1); }
   let [vision] = await db.select().from(strategicStatements).where(and(eq(strategicStatements.planId, plan.id), eq(strategicStatements.code, "CONTOH-VISI"))).limit(1);
-  if (!vision) {const result=await db.insert(strategicStatements).values({ organizationId: program.organizationId, planId: plan.id, statementType: "VISION", code: "CONTOH-VISI", statement: "CONTOH - Menjadi UPPS kemaritiman terapan yang unggul, aman, dan relevan dengan industri.", lifecycleStatus: "EFFECTIVE", effectiveFrom: new Date("2025-01-01") });[vision]=await db.select().from(strategicStatements).where(eq(strategicStatements.id,Number(result[0].insertId))).limit(1);}
+  if (!vision) {const result=await db.insert(strategicStatements).values({ organizationId: program.organizationId, planId: plan.id, statementType: "VISION", code: "CONTOH-VISI", statement: "CONTOH - Menjadi unit pendidikan vokasi yang unggul, aman, dan relevan dengan kebutuhan industri.", lifecycleStatus: "EFFECTIVE", effectiveFrom: new Date("2025-01-01") });[vision]=await db.select().from(strategicStatements).where(eq(strategicStatements.id,Number(result[0].insertId))).limit(1);}
   let [goal] = await db.select().from(strategicGoals).where(and(eq(strategicGoals.planId, plan.id), eq(strategicGoals.code, "CONTOH-SS1"))).limit(1);
   if (!goal) { const result = await db.insert(strategicGoals).values({ planId: plan.id, organizationId: program.organizationId, code: "CONTOH-SS1", title: "CONTOH - Meningkatkan mutu pembelajaran dan relevansi lulusan", lifecycleStatus: "EFFECTIVE" }); [goal] = await db.select().from(strategicGoals).where(eq(strategicGoals.id, Number(result[0].insertId))).limit(1); }
   let [kpi] = await db.select().from(kpis).where(eq(kpis.code, "CONTOH-KPI-01")).limit(1);
@@ -29,7 +30,7 @@ async function main() {
   if (!(await db.select().from(kpiMeasurements).where(and(eq(kpiMeasurements.kpiId, kpi.id), eq(kpiMeasurements.period, PERIOD))).limit(1))[0]) await db.insert(kpiMeasurements).values({ kpiId: kpi.id, period: PERIOD, actualValue: "76", achievementPercent: "95", status: "NEAR_TARGET", workflowStatus: "APPROVED", measuredBy: admin.id });
 
   let [curriculum] = await db.select().from(curricula).where(and(eq(curricula.studyProgramId, program.id), eq(curricula.code, "CONTOH-KUR-2025"))).limit(1);
-  if (!curriculum) { const result = await db.insert(curricula).values({ studyProgramId: program.id, code: "CONTOH-KUR-2025", title: "CONTOH - Kurikulum D3 Nautika 2025", versionNumber: 1, academicYearStart: 2025, academicYearEnd: 2029, totalCredits: "110", description: "Data demonstrasi untuk simulasi pengelolaan kurikulum OBE.", lifecycleStatus: "EFFECTIVE", effectiveFrom: new Date("2025-08-01") }); [curriculum] = await db.select().from(curricula).where(eq(curricula.id, Number(result[0].insertId))).limit(1); }
+  if (!curriculum) { const result = await db.insert(curricula).values({ studyProgramId: program.id, code: "CONTOH-KUR-2025", title: `CONTOH - Kurikulum ${program.name} 2025`, versionNumber: 1, academicYearStart: 2025, academicYearEnd: 2029, totalCredits: "110", description: "Data demonstrasi untuk simulasi pengelolaan kurikulum OBE.", lifecycleStatus: "EFFECTIVE", effectiveFrom: new Date("2025-08-01") }); [curriculum] = await db.select().from(curricula).where(eq(curricula.id, Number(result[0].insertId))).limit(1); }
   if (!(await db.select().from(graduateProfiles).where(and(eq(graduateProfiles.curriculumId, curriculum.id), eq(graduateProfiles.code, "CONTOH-PL01"))).limit(1))[0]) await db.insert(graduateProfiles).values({ curriculumId: curriculum.id, code: "CONTOH-PL01", description: "Perwira pelayaran yang kompeten, profesional, dan berbudaya keselamatan." });
   if (!(await db.select().from(cpl).where(and(eq(cpl.curriculumId, curriculum.id), eq(cpl.code, "CONTOH-CPL01"))).limit(1))[0]) await db.insert(cpl).values({ curriculumId: curriculum.id, code: "CONTOH-CPL01", category: "KETERAMPILAN_KHUSUS", description: "Mampu melaksanakan navigasi dan operasi kapal sesuai prosedur keselamatan." });
 
@@ -57,7 +58,7 @@ async function main() {
   await db.update(evaluations).set({status:"APPROVED",publicSummary:"CONTOH - Capaian mendekati target. Penguatan tracer study sedang dilaksanakan."}).where(eq(evaluations.id,evaluation.id));
   const [measurement]=await db.select().from(kpiMeasurements).where(and(eq(kpiMeasurements.kpiId,kpi.id),eq(kpiMeasurements.period,PERIOD))).limit(1);
   const publishExamples=async(subjectType:string,subjectId:number,title:string,summary:string)=>{const[existing]=await db.select().from(publications).where(and(eq(publications.subjectType,subjectType),eq(publications.subjectId,subjectId),eq(publications.status,"PUBLISHED"))).limit(1);if(existing)return;const[policy]=await db.select().from(publicationPolicies).where(and(eq(publicationPolicies.subjectType,subjectType),eq(publicationPolicies.status,"ACTIVE"))).limit(1);await db.insert(publications).values({subjectType,subjectId,policyId:policy?.id,visibility:"PUBLIC",publicTitle:title,publicSummary:summary,fieldPolicySnapshot:policy?.allowedFields??[],approvedBy:admin.id,publishedBy:admin.id,publishedAt:new Date(),status:"PUBLISHED"});};
-  if(vision)await publishExamples("STRATEGIC_STATEMENT",vision.id,"Visi Jurusan Kemaritiman",vision.statement);
+  if(vision)await publishExamples("STRATEGIC_STATEMENT",vision.id,`Visi ${organization?.name??"Jurusan"}`,vision.statement);
   if(measurement)await publishExamples("KPI_MEASUREMENT",measurement.id,"Capaian relevansi lulusan","CONTOH - Capaian 95% dari target tahunan.");
   await publishExamples("EVALUATION",evaluation.id,"Evaluasi relevansi lulusan","CONTOH - Capaian mendekati target dan ditindaklanjuti melalui penguatan tracer study.");
   const [framework] = await db.select().from(accreditationFrameworks).where(eq(accreditationFrameworks.code, "LAMTEKNIK-2025-DEMO-D3")).limit(1);
