@@ -21,7 +21,7 @@ export const newsCategories=mysqlTable("news_categories",{
 export const newsArticles=mysqlTable("news_articles",{
   id:id(),
   organizationId:bigint("organization_id",{mode:"number"}).notNull(),
-  categoryId:bigint("category_id",{mode:"number"),
+  categoryId:bigint("category_id",{mode:"number"}),
   title:varchar("title",{length:500}).notNull(),
   slug:varchar("slug",{length:550}).notNull(),
   excerpt:text("excerpt"),
