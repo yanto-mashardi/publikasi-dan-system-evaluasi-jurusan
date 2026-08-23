@@ -2,8 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession, type SessionUser } from "@/src/lib/auth";
 import { can } from "@/src/lib/rbac";
+import { getInternalDashboardSummary } from "@/src/services/internal-dashboard";
 import "./dashboard.css";
 import "./dashboard-shell.css";
+import "./dashboard-live.css";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +52,8 @@ export default async function InternalDashboard() {
   const navigation = operationalNavigation.filter((item) => allowed(session, item));
   const adminAllowed = ["master.manage", "users.manage", "roles.manage", "news.manage", "approval.final", "publication.execute"].some((permission) => can(session, permission));
   const scopeCount = session.scopes?.length ?? 0;
+  const summary = await getInternalDashboardSummary(session);
+  const ipoCounts = [summary.input, summary.process, summary.output];
 
   return <main className="internal-dashboard">
     <header className="dashboard-header">
@@ -76,19 +80,38 @@ export default async function InternalDashboard() {
 
       <div className="dashboard-content">
         <section className="dashboard-intro">
-          <div><div className="dashboard-kicker">Accreditation & governance view</div><h1>Data yang sama, dibaca sebagai alur tata kelola yang utuh.</h1><p>INPUT, PROCESS, dan OUTPUT/OUTCOME adalah tampilan lintas-domain atas record operasional—bukan database atau proses baru.</p></div>
+          <div><div className="dashboard-kicker">Accreditation & governance view</div><h1>Tata kelola UPPS dalam satu ruang kerja.</h1><p>Ringkasan ini dihitung dari record operasional yang sama. Gunakan domain di sebelah kiri untuk memperbarui sumber datanya.</p>{summary.demoData && <span className="demo-badge">Mode data contoh · record berawalan CONTOH</span>}</div>
           <div className="access-context" aria-label="Konteks akses pengguna"><span>Konteks akses</span><strong>{scopeCount > 0 ? `${scopeCount} scope organisasi / Prodi` : "Mengikuti permission pengguna"}</strong><small>Framework, Prodi, dan periode dipilih di modul terkait saat datanya tersedia.</small></div>
+        </section>
+
+        <section className="overview-grid" aria-label="Ringkasan ruang kerja">
+          <div><span>Program studi aktif</span><strong>{summary.programs}</strong><small>sesuai scope akses</small></div>
+          <div><span>Framework tertaut</span><strong>{summary.frameworks}</strong><small>assignment aktif</small></div>
+          <div><span>Menunggu proses</span><strong>{summary.submitted}</strong><small>record submitted</small></div>
+          <div><span>Evaluasi</span><strong>{summary.evaluations}</strong><small>record evaluasi</small></div>
+          <div><span>Tindak lanjut terbuka</span><strong>{summary.openFollowups}</strong><small>perlu diselesaikan</small></div>
+          <div><span>Disahkan / terbit</span><strong>{summary.published}</strong><small>approval dan publikasi</small></div>
         </section>
 
         <section className="ipo-section" aria-labelledby="ipo-heading">
           <div className="section-heading-row"><div><span className="section-label">Peta data tata kelola</span><h2 id="ipo-heading">Input → Process → Output / Outcome</h2></div>{can(session,"accreditation.read") && <Link className="text-link" href="/internal/accreditation">Buka registry akreditasi →</Link>}</div>
           <div className="ipo-grid">{ipoColumns.map((column, columnIndex) => <article className={`ipo-card ipo-card-${columnIndex + 1}`} key={column.title}>
-            <div className="ipo-card-head"><span>{column.key}</span><div><p>{column.subtitle}</p><h3>{column.title}</h3></div></div>
+            <div className="ipo-card-head"><span>{column.key}</span><div><p>{column.subtitle}</p><h3>{column.title}</h3></div><div className="record-count"><strong>{ipoCounts[columnIndex]}</strong><small>record tersedia</small></div></div>
             <p className="ipo-description">{column.description}</p>
             <div className="ipo-groups">{column.groups.map((group) => <div className="ipo-group" key={group.label}><strong>{group.label}</strong><p>{group.items}</p></div>)}</div>
             {columnIndex < ipoColumns.length - 1 && <span className="ipo-connector" aria-hidden="true">→</span>}
           </article>)}</div>
-          <p className="dashboard-note">Dashboard ini belum menampilkan skor readiness atau gap. Perhitungan tersebut baru dapat ditampilkan setelah pemetaan indikator, evidence, dan aturan readiness Phase 7 tersedia.</p>
+          <p className="dashboard-note">Angka di atas adalah jumlah record sumber yang tersedia, bukan skor readiness. Readiness baru ditampilkan setelah aturan Phase 7 tersedia.</p>
+        </section>
+
+        <section className="workspace-actions" aria-labelledby="actions-heading">
+          <div><span className="section-label">Mulai bekerja</span><h2 id="actions-heading">Buka data sumber</h2><p>Data contoh dapat langsung diperiksa, diubah, atau diganti admin melalui modul yang sudah tersedia.</p></div>
+          <div className="action-links">
+            {allowed(session, operationalNavigation[1]) && <Link href="/internal/academic"><strong>Akademik & OBE</strong><span>Kurikulum, profil lulusan, CPL, dan review →</span></Link>}
+            {allowed(session, operationalNavigation[2]) && <Link href="/internal/resources"><strong>Sumber Daya & Tridharma</strong><span>Lab, SDM, riset, PkM, mahasiswa, kerja sama →</span></Link>}
+            {allowed(session, operationalNavigation[5]) && <Link href="/internal/accreditation"><strong>Registry Akreditasi</strong><span>Framework, struktur, dan assignment Prodi →</span></Link>}
+            {adminAllowed && <Link href="/internal/admin"><strong>Administrasi Sistem</strong><span>Organisasi, Prodi, pengguna, role, dan berita →</span></Link>}
+          </div>
         </section>
 
         <section className="governance-strip" aria-labelledby="workflow-heading">

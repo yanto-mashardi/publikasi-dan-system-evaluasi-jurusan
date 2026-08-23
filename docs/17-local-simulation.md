@@ -61,9 +61,18 @@ db:push
 → db:seed
 → db:backfill-scopes
 → bootstrap:admin
+→ db:seed:demo
 ```
 
 Seed akan membuat foundation roles/permissions, Jurusan Kemaritiman dan dua Prodi awal, publication policies, serta **LAM Teknik 2025 Reference Structure** sebagai model awal registry akreditasi. LAM Teknik tidak otomatis ditautkan ke Prodi.
+
+Seed demo menambahkan contoh lintas-domain setelah admin tersedia: Renstra/KPI, kurikulum dan CPL, laboratorium dan K3L, SDM, penelitian, PkM, statistik mahasiswa/lulusan, kerja sama, evaluasi, tindak lanjut, serta assignment framework. Semua record contoh menggunakan awalan `CONTOH` dan seed bersifat idempotent, sehingga mudah dikenali dan tidak berlipat ketika setup diulang.
+
+Untuk menambahkan data contoh saja pada database yang skemanya sudah mutakhir:
+
+```bash
+npm run db:seed:demo
+```
 
 ## 5. Jalankan Development Server
 
