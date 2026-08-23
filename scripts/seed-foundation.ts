@@ -4,22 +4,28 @@ import { organizations,permissions,publicationPolicies,rolePermissions,roles,stu
 import { roleSettings } from "../src/db/schema-admin";
 
 const ROLE_NAMES:Record<string,string>={ADMIN_SYSTEM:"Admin Sistem",ADMIN_DATA:"Admin Data",KAPRODI:"Kaprodi",GKM:"GKM",SEKJUR:"Sekjur",KAJUR:"Kajur",VIEWER_INTERNAL:"Viewer Internal"};
-const PERMISSIONS=["system.configure","users.manage","roles.manage","master.manage","audit.read","data.create","data.update","evidence.upload","publication.execute","news.manage","program.read","program.update","curriculum.manage","kpi.measure","followup.execute","quality.read","evidence.verify","evaluation.create","finding.create","recommendation.create","followup.verify","publication.recommend","data.verify","workflow.coordinate","publication.review","approval.final","evaluation.approve","publication.approve","report.approve","internal.read"];
+const PERMISSIONS=["system.configure","users.manage","roles.manage","master.manage","audit.read","data.create","data.update","evidence.upload","publication.execute","news.manage","program.read","program.update","curriculum.manage","kpi.measure","followup.execute","quality.read","evidence.verify","evaluation.create","finding.create","recommendation.create","followup.verify","publication.recommend","data.verify","workflow.coordinate","publication.review","approval.final","evaluation.approve","publication.approve","report.approve","internal.read","resources.read","resources.manage","resources.contribute"];
 const ROLE_GRANTS:Record<string,string[]>={
- ADMIN_SYSTEM:["system.configure","users.manage","roles.manage","master.manage","audit.read","internal.read"],
- ADMIN_DATA:["data.create","data.update","evidence.upload","publication.execute","news.manage","internal.read"],
- KAPRODI:["program.read","program.update","curriculum.manage","kpi.measure","evidence.upload","followup.execute","internal.read"],
- GKM:["quality.read","evidence.verify","evaluation.create","finding.create","recommendation.create","followup.verify","publication.recommend","internal.read"],
- SEKJUR:["data.verify","workflow.coordinate","publication.review","followup.verify","internal.read"],
- KAJUR:["approval.final","evaluation.approve","publication.approve","report.approve","internal.read"],
- VIEWER_INTERNAL:["internal.read"]
+ ADMIN_SYSTEM:["system.configure","users.manage","roles.manage","master.manage","audit.read","internal.read","resources.read"],
+ ADMIN_DATA:["data.create","data.update","evidence.upload","publication.execute","news.manage","internal.read","resources.read","resources.manage"],
+ KAPRODI:["program.read","program.update","curriculum.manage","kpi.measure","evidence.upload","followup.execute","internal.read","resources.read","resources.contribute"],
+ GKM:["quality.read","evidence.verify","evaluation.create","finding.create","recommendation.create","followup.verify","publication.recommend","internal.read","resources.read"],
+ SEKJUR:["data.verify","workflow.coordinate","publication.review","followup.verify","internal.read","resources.read","resources.manage"],
+ KAJUR:["approval.final","evaluation.approve","publication.approve","report.approve","internal.read","resources.read"],
+ VIEWER_INTERNAL:["internal.read","resources.read"]
 };
 const POLICIES=[
  {subjectType:"STRATEGIC_STATEMENT",requiredLifecycleStatus:"EFFECTIVE",allowedFields:["statementType","statement","versionNumber","effectiveFrom","studyProgramId"]},
  {subjectType:"KPI_MEASUREMENT",requiredLifecycleStatus:"APPROVED",allowedFields:["kpi","period","targetValue","actualValue","achievementPercent","status","publicSummary"]},
  {subjectType:"EVALUATION",requiredLifecycleStatus:"APPROVED",allowedFields:["subject","period","publicSummary","recommendationSummary","followupProgress"]},
  {subjectType:"NEWS_ARTICLE",requiredLifecycleStatus:"APPROVED",allowedFields:["title","slug","excerpt","body","coverImageUrl","category","featured","publishedAt"]},
- {subjectType:"CURRICULUM",requiredLifecycleStatus:"EFFECTIVE",allowedFields:["studyProgram","code","title","versionNumber","academicYearStart","academicYearEnd","totalCredits","description","graduateProfiles","cpl","courses","evaluationHistory"]}
+ {subjectType:"CURRICULUM",requiredLifecycleStatus:"EFFECTIVE",allowedFields:["studyProgram","code","title","versionNumber","academicYearStart","academicYearEnd","totalCredits","description","graduateProfiles","cpl","courses","evaluationHistory"]},
+ {subjectType:"LABORATORY_PROFILE",requiredLifecycleStatus:"APPROVED",allowedFields:["code","name","description","location","operationalStatus","studyPrograms","equipmentSummary"]},
+ {subjectType:"RESEARCH_PROJECT",requiredLifecycleStatus:"APPROVED",allowedFields:["studyProgram","title","year","fundingSource","scheme","outputSummary","projectStatus"]},
+ {subjectType:"COMMUNITY_SERVICE_PROJECT",requiredLifecycleStatus:"APPROVED",allowedFields:["studyProgram","title","year","partner","fundingSource","outputSummary","projectStatus"]},
+ {subjectType:"STUDENT_ANNUAL_STAT",requiredLifecycleStatus:"APPROVED",allowedFields:["studyProgram","academicYear","activeStudents","newStudents","graduates","dropoutStudents"]},
+ {subjectType:"GRADUATE_OUTCOME_STAT",requiredLifecycleStatus:"APPROVED",allowedFields:["studyProgram","graduationYear","graduates","trackedGraduates","employed","entrepreneurship","furtherStudy","averageWaitingMonths","relevantEmploymentPercent"]},
+ {subjectType:"COOPERATION",requiredLifecycleStatus:"APPROVED",allowedFields:["studyProgram","partnerName","partnerType","scope","startDate","endDate","implementationSummary","cooperationStatus"]}
 ];
 
 async function main(){
