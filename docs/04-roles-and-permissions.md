@@ -5,8 +5,10 @@
 | Capability | Admin Sistem | Admin Data | Kaprodi | GKM | Sekjur | Kajur |
 |---|---:|---:|---:|---:|---:|---:|
 | Konfigurasi sistem | ✓ |  |  |  |  |  |
-| Master data | ✓ | ✓ | scope |  | ✓ |  |
-| Input data |  | ✓ | ✓ | scope | ✓ |  |
+| Kelola master organisasi/Prodi | ✓ |  |  |  |  |  |
+| Kelola user & role | ✓ |  |  |  |  |  |
+| Input data substantif |  | ✓ | ✓ (scope) | scope | ✓ |  |
+| Kelola berita/konten |  | ✓ |  |  | review | approval |
 | Upload evidence |  | ✓ | ✓ | ✓ | ✓ |  |
 | Verifikasi evidence |  |  | scope | ✓ | ✓ |  |
 | Evaluasi mutu |  |  | scope | ✓ | ✓ | ✓ |
@@ -15,8 +17,8 @@
 | Verifikasi efektivitas |  |  |  | ✓ | ✓ | ✓ |
 | Approval tingkat UPPS |  |  |  |  |  | ✓ |
 | Merekomendasikan layak publik |  |  |  | ✓ | ✓ | ✓ |
-| Approval publikasi |  |  |  |  | review | ✓ |
-| Eksekusi publish setelah approval |  | ✓ |  |  | ✓ | ✓ |
+| Review publikasi |  |  |  | ✓ | ✓ | ✓ |
+| Eksekusi publish setelah approval |  | ✓ |  |  |  |  |
 | Lihat audit log | ✓ |  |  | ✓ | ✓ | ✓ |
 
 ## Separation of Duties
@@ -27,7 +29,7 @@ Sistem harus mencegah pola berikut untuk objek yang membutuhkan pengendalian mut
 Inputter = Evaluator = Approver
 ```
 
-Admin Data boleh menyiapkan metadata publik dan menjalankan aksi publish, tetapi **tidak menentukan sendiri bahwa sebuah objek layak dipublikasikan**. Publication endpoint wajib memeriksa adanya keputusan approval yang sah.
+Admin Sistem mengelola konfigurasi, organisasi, Prodi, user, role, dan capability. Admin Data mengelola data/konten dan menjalankan aksi publish terhadap objek yang sudah memenuhi approval serta publication policy. Admin Sistem maupun Admin Data tidak otomatis menjadi evaluator substansi mutu.
 
 ## Scope
 
@@ -40,11 +42,19 @@ scope = study_program_id
 GKM:
 
 ```text
-scope = UPPS + semua prodi yang menjadi ruang lingkup mutu
+scope = UPPS + semua prodi dalam ruang lingkup mutu
+```
+
+Sekjur:
+
+```text
+scope = UPPS untuk koordinasi, review, dan verifikasi administratif
 ```
 
 Kajur:
 
 ```text
-scope = UPPS
+scope = UPPS untuk approval dan keputusan strategis
 ```
+
+Role tetap dinamis di database. Matriks ini adalah baseline separation-of-duties; role tambahan boleh dibuat selama tidak memberikan kombinasi capability yang menghilangkan kontrol input–evaluation–approval untuk objek formal.
