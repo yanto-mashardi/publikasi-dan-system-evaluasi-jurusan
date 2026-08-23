@@ -1,0 +1,14 @@
+import { eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { requireDb } from "@/src/db";
+import { courses } from "@/src/db/schema-phase5";
+import { getSession } from "@/src/lib/auth";
+import { can } from "@/src/lib/rbac";
+import { audit } from "@/src/lib/audit";
+import { canAccessProgram } from "@/src/services/academic-scope";
+const patch=z.object({code:z.string().min(1).max(50).optional(),name:z.string().min(2).max(255).optional(),credits:z.number().positive().optional(),courseType:z.string().max(50).nullable().optional(),status:z.enum(["ACTIVE","ARCHIVED"]).optional()});
+async function idOf(params:Promise<{id:string}>){const{id}=await params;const n=Number(id);return Number.isInteger(n)&&n>0?n:null;}
+async function getRow(id:number){const db=requireDb();const[row]=await db.select().from(courses).where(eq(courses.id,id)).limit(1);return row??null;}
+export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){const s=await getSession();if(!s)return NextResponse.json({error:"Unauthorized"},{status:401});if(!(can(s,"curriculum.manage")||can(s,"data.update")))return NextResponse.json({error:"Forbidden"},{status:403});const id=await idOf(params);if(!id)return NextResponse.json({error:"Invalid id"},{status:400});const p=patch.safeParse(await req.json());if(!p.success)return NextResponse.json({error:p.error.flatten()},{status:400});const before=await getRow(id);if(!before)return NextResponse.json({error:"Not found"},{status:404});if(!(await canAccessProgram(s,before.studyProgramId)))return NextResponse.json({error:"Scope Program Studi tidak sesuai."},{status:403});const values:any={...p.data};if(values.credits!=null)values.credits=String(values.credits);const db=requireDb();await db.update(courses).set(values).where(eq(courses.id,id));await audit({actorId:s.userId,action:"UPDATE_COURSE",subjectType:"COURSE",subjectId:id,before,after:p.data});return NextResponse.json({id,...p.data});}
+export async function DELETE(_:Request,{params}:{params:Promise<{id:string}>}){const s=await getSession();if(!s)return NextResponse.json({error:"Unauthorized"},{status:401});if(!(can(s,"curriculum.manage")||can(s,"data.update")))return NextResponse.json({error:"Forbidden"},{status:403});const id=await idOf(params);if(!id)return NextResponse.json({error:"Invalid id"},{status:400});const before=await getRow(id);if(!before)return NextResponse.json({error:"Not found"},{status:404});if(!(await canAccessProgram(s,before.studyProgramId)))return NextResponse.json({error:"Scope Program Studi tidak sesuai."},{status:403});const db=requireDb();await db.update(courses).set({status:"ARCHIVED"}).where(eq(courses.id,id));await audit({actorId:s.userId,action:"ARCHIVE_COURSE",subjectType:"COURSE",subjectId:id,before,after:{status:"ARCHIVED"}});return NextResponse.json({id,status:"ARCHIVED"});}
