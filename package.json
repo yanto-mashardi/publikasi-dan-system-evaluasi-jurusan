@@ -11,6 +11,7 @@
     "db:generate":"drizzle-kit generate",
     "db:push":"drizzle-kit push",
     "bootstrap:admin":"tsx scripts/bootstrap-admin.ts",
+    "bootstrap:master":"tsx scripts/bootstrap-master.ts",
     "bootstrap:department-admin":"tsx scripts/bootstrap-department-admin.ts",
     "bootstrap:demo-workflow-users":"tsx scripts/bootstrap-demo-workflow-users.ts",
     "db:seed":"tsx scripts/seed-foundation.ts && tsx scripts/seed-accreditation.ts",

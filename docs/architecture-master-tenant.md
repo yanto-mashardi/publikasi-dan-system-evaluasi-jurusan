@@ -4,6 +4,8 @@
 
 `APP_MODE=MASTER` adalah control plane. Ia menyimpan registry aplikasi Jurusan, pekerjaan provisioning, registry LAM/template global, distribusi template, dan snapshot federasi. Master tidak menjadi tempat pengisian KPI atau evidence Jurusan.
 
+Database Master disiapkan dengan `npm run db:push` lalu `npm run bootstrap:master`. Bootstrap ini hanya membuat identitas teknis control-plane dan akun Super Admin; ia tidak membuat Prodi contoh.
+
 `APP_MODE=TENANT` adalah satu aplikasi untuk satu Jurusan/UPPS. Setiap Tenant memakai domain dan database sendiri, tetapi menjalankan release/codebase yang sama.
 
 ## Kepemilikan tabel
