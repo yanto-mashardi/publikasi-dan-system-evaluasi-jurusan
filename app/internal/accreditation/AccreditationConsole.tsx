@@ -73,6 +73,21 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
     }catch(error){setMessage(error instanceof Error?error.message:"Operasi gagal");}
   }
 
+  async function importExcel(event:FormEvent<HTMLFormElement>){
+    event.preventDefault();
+    const data=new FormData(event.currentTarget);
+    data.set("frameworkId",String(frameworkId));
+    try{
+      setMessage("Memeriksa dan mengimpor Excel...");
+      const response=await fetch("/api/internal/accreditation/import",{method:"POST",body:data});
+      const result=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(typeof result.error==="string"?result.error:"Impor gagal");
+      setMessage(`${result.message} ${result.counts.indicators} indikator, ${result.counts.variables} variabel, ${result.counts.rubrics} rubrik, dan ${result.counts.evidence} evidence.`);
+      event.currentTarget.reset();
+      await loadStructure(frameworkId);
+    }catch(error){setMessage(error instanceof Error?error.message:"Impor gagal");}
+  }
+
   return <div className="section">
     {message&&<div className="card" style={{marginBottom:16}}>{message}</div>}
 
@@ -98,6 +113,16 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
         </select>
         {selected&&<>
           <p className="muted">{selected.instrumentType??"—"} · {selected.educationLevel??"semua jenjang"} · {selected.lifecycleStatus}</p>
+          {manage&&selected.lifecycleStatus==="DRAFT"&&<div className="excel-import">
+            <h3>Impor indikator dari Excel</h3>
+            <p className="muted">Target: <b>{selected.agencyCode} — {selected.agencyName}</b>, template <b>{selected.name} v{selected.versionNumber}</b>. Data tidak dapat tertukar dengan LAM lain karena masuk langsung ke framework terpilih.</p>
+            <a className="button secondary" href="/api/internal/accreditation/import">Unduh format Excel</a>
+            <form className="form" encType="multipart/form-data" onSubmit={importExcel}>
+              <input name="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required/>
+              <button className="button">Periksa & impor ke DRAFT</button>
+            </form>
+            <p className="muted">Impor ditolak bila DRAFT sudah memiliki indikator. Untuk mengganti instrumen, buat versi DRAFT baru, impor, periksa, lalu aktifkan.</p>
+          </div>}
           {manage&&selected.lifecycleStatus==="DRAFT"&&<button className="button" type="button" onClick={()=>void act(()=>request(`/api/internal/accreditation/frameworks?id=${selected.id}`,"PATCH",{lifecycleStatus:"ACTIVE"}))}>Aktifkan framework</button>}
           {manage&&selected.lifecycleStatus==="ACTIVE"&&<button className="button" type="button" onClick={()=>void act(()=>request(`/api/internal/accreditation/frameworks?id=${selected.id}`,"DELETE"))}>Arsipkan framework</button>}
           {selected.lifecycleStatus==="ACTIVE"&&<p className="muted">Framework aktif bersifat immutable. Perubahan instrumen dilakukan melalui versi baru.</p>}
@@ -183,14 +208,15 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
     </>}
 
     <section className="card">
-      <h2>Assignment Framework ke Program Studi</h2>
-      {assignments.map(row=><p className="registry-row" key={row.id}><span><b>{row.studyProgramName}</b> → {row.agencyCode} / {row.frameworkName} <span className="badge">{row.assignmentStatus}{row.isPrimary?" · PRIMARY":""}</span></span>{assign&&row.assignmentStatus==="ACTIVE"&&<button type="button" onClick={()=>void act(()=>request(`/api/internal/accreditation/assignments?id=${row.id}`,"DELETE"))}>Arsipkan assignment</button>}</p>)}
+      <h2>Template Indikator Program Studi</h2>
+      <p className="muted">Super Admin menyediakan LAM dan template global. Kaprodi memilih template utama, menggantinya dengan template lain, atau melepaskan template dari Prodinya sendiri.</p>
+      {assignments.map(row=><p className="registry-row" key={row.id}><span><b>{row.studyProgramName}</b> → {row.agencyCode} / {row.frameworkName} <span className="badge">{row.assignmentStatus}{row.isPrimary?" · UTAMA":""}</span></span>{assign&&row.assignmentStatus==="ACTIVE"&&<button type="button" onClick={()=>void act(()=>request(`/api/internal/accreditation/assignments?id=${row.id}`,"DELETE"))}>Lepas template</button>}</p>)}
       {assign&&<form className="form" onSubmit={event=>{event.preventDefault();const data=formData(event);void act(()=>request("/api/internal/accreditation/assignments","POST",{studyProgramId:Number(data.get("studyProgramId")),frameworkId:Number(data.get("frameworkId")),isPrimary:true,officialCoverageReference:String(data.get("coverage")||"")||undefined,notes:String(data.get("notes")||"")||undefined}));}}>
         <select name="studyProgramId" required><option value="">Pilih Program Studi</option>{programs.filter(row=>row.status==="ACTIVE").map(row=><option key={row.id} value={row.id}>{row.name}</option>)}</select>
         <select name="frameworkId" required><option value="">Pilih framework ACTIVE</option>{frameworks.filter(row=>row.lifecycleStatus==="ACTIVE").map(row=><option key={row.id} value={row.id}>{row.agencyCode} · {row.name}</option>)}</select>
         <input name="coverage" placeholder="Referensi cakupan resmi / SK / URL"/>
         <input name="notes" placeholder="Catatan assignment"/>
-        <button className="button">Tautkan sebagai framework utama</button>
+        <button className="button">Pilih sebagai template utama</button>
       </form>}
       <p className="muted">LAM Teknik reference seed tidak ditautkan otomatis. Assignment dilakukan setelah cakupan resmi Prodi diverifikasi.</p>
     </section>
