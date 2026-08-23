@@ -3,13 +3,20 @@ import { requireDb } from "@/src/db";
 import { studyPrograms } from "@/src/db/schema";
 import { governanceScopes } from "@/src/db/schema-phase5";
 import type { SessionUser } from "@/src/lib/auth";
-import { scopeAllows } from "@/src/lib/rbac";
+import { can,scopeAllows } from "@/src/lib/rbac";
 
 export async function validateGovernanceScope(organizationId:number,studyProgramId?:number|null){
   if(studyProgramId==null)return true;
   const db=requireDb();
   const [program]=await db.select({id:studyPrograms.id}).from(studyPrograms).where(and(eq(studyPrograms.id,studyProgramId),eq(studyPrograms.organizationId,organizationId),eq(studyPrograms.status,"ACTIVE"))).limit(1);
   return !!program;
+}
+
+export function governanceWriteAllows(user:SessionUser,organizationId:number,studyProgramId?:number|null){
+  if(can(user,"system.configure"))return true;
+  const scopes=user.scopes??[];
+  if(studyProgramId==null)return scopes.some(scope=>scope.organizationId===organizationId&&scope.studyProgramId==null);
+  return scopes.some(scope=>scope.organizationId===organizationId&&(scope.studyProgramId==null||scope.studyProgramId===studyProgramId));
 }
 
 export async function attachGovernanceScope(input:{subjectType:string;subjectId:number;organizationId:number;studyProgramId?:number|null}){
@@ -23,9 +30,16 @@ export async function getGovernanceScope(subjectType:string,subjectId:number){
   return scope??null;
 }
 
-export async function assertSubjectScope(user:SessionUser,subjectType:string,subjectId:number,fallbackOrganizationId?:number){
+export async function canReadSubjectScope(user:SessionUser,subjectType:string,subjectId:number,fallbackOrganizationId?:number){
   const scope=await getGovernanceScope(subjectType,subjectId);
   const organizationId=scope?.organizationId??fallbackOrganizationId;
   if(!organizationId)return false;
   return scopeAllows(user,organizationId,scope?.studyProgramId??null);
+}
+
+export async function assertSubjectScope(user:SessionUser,subjectType:string,subjectId:number,fallbackOrganizationId?:number){
+  const scope=await getGovernanceScope(subjectType,subjectId);
+  const organizationId=scope?.organizationId??fallbackOrganizationId;
+  if(!organizationId)return false;
+  return governanceWriteAllows(user,organizationId,scope?.studyProgramId??null);
 }
