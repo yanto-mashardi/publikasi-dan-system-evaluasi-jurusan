@@ -70,10 +70,33 @@ jobs:
             http://127.0.0.1:3000/api/auth/login
           curl -fsS -b /tmp/cookies.txt http://127.0.0.1:3000/internal > /dev/null
           curl -fsS -b /tmp/cookies.txt http://127.0.0.1:3000/internal/resources > /dev/null
+          curl -fsS -b /tmp/cookies.txt http://127.0.0.1:3000/internal/accreditation > /dev/null
           curl -fsS -b /tmp/cookies.txt -H 'content-type: application/json' \
             -d '{"organizationId":1,"code":"CI-LAB","name":"CI Laboratory","description":"Runtime smoke test","location":"CI"}' \
             http://127.0.0.1:3000/api/internal/laboratories > /tmp/lab.json
           cat /tmp/lab.json
+          curl -fsS -b /tmp/cookies.txt http://127.0.0.1:3000/api/internal/accreditation/agencies > /tmp/agencies.json
+          grep -q 'LAM_TEKNIK' /tmp/agencies.json
+          AGENCY_ID=$(curl -fsS -b /tmp/cookies.txt -H 'content-type: application/json' \
+            -d '{"code":"CI_LAM","name":"CI Accreditation Agency","agencyType":"LAM"}' \
+            http://127.0.0.1:3000/api/internal/accreditation/agencies | jq -r '.id')
+          FRAMEWORK_ID=$(curl -fsS -b /tmp/cookies.txt -H 'content-type: application/json' \
+            -d "{\"agencyId\":$AGENCY_ID,\"code\":\"CI-2026-D3\",\"name\":\"CI D3 Framework\",\"instrumentYear\":2026,\"instrumentType\":\"REGULER\",\"educationLevel\":\"D3\"}" \
+            http://127.0.0.1:3000/api/internal/accreditation/frameworks | jq -r '.id')
+          curl -fsS -b /tmp/cookies.txt -H 'content-type: application/json' \
+            -d "{\"entity\":\"CLUSTER\",\"frameworkId\":$FRAMEWORK_ID,\"code\":\"INPUT\",\"name\":\"Input\",\"semanticGroup\":\"INPUT\",\"sequence\":1}" \
+            http://127.0.0.1:3000/api/internal/accreditation/structure > /dev/null
+          curl -fsS -b /tmp/cookies.txt -H 'content-type: application/json' \
+            -d "{\"entity\":\"CRITERION\",\"frameworkId\":$FRAMEWORK_ID,\"code\":\"K1\",\"name\":\"CI Criterion\",\"sequence\":1}" \
+            http://127.0.0.1:3000/api/internal/accreditation/structure > /dev/null
+          curl -fsS -b /tmp/cookies.txt -X PATCH -H 'content-type: application/json' \
+            -d '{"lifecycleStatus":"ACTIVE"}' \
+            "http://127.0.0.1:3000/api/internal/accreditation/frameworks?id=$FRAMEWORK_ID" > /dev/null
+          PROGRAM_ID=$(curl -fsS -b /tmp/cookies.txt http://127.0.0.1:3000/api/internal/study-programs | jq -r '.[0].id')
+          curl -fsS -b /tmp/cookies.txt -H 'content-type: application/json' \
+            -d "{\"studyProgramId\":$PROGRAM_ID,\"frameworkId\":$FRAMEWORK_ID,\"isPrimary\":true,\"officialCoverageReference\":\"CI smoke\"}" \
+            http://127.0.0.1:3000/api/internal/accreditation/assignments > /tmp/assignment.json
+          cat /tmp/assignment.json
       - name: Publish commit status
         if: always()
         env:
