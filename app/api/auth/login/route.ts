@@ -2,6 +2,32 @@ import { compare } from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireDb } from "@/src/db";
-import { roles,userRoles,users } from "@/src/db/schema";
+import { permissions,rolePermissions,roles,userRoles,users } from "@/src/db/schema";
+import { roleSettings } from "@/src/db/schema-admin";
 import { createSession } from "@/src/lib/auth";
-export async function POST(request:Request){const form=await request.formData();const email=String(form.get("email")??"").trim().toLowerCase();const password=String(form.get("password")??"");const db=requireDb();const rows=await db.select({userId:users.id,email:users.email,name:users.name,passwordHash:users.passwordHash,status:users.status,roleCode:roles.code,organizationId:userRoles.organizationId,studyProgramId:userRoles.studyProgramId}).from(users).innerJoin(userRoles,eq(users.id,userRoles.userId)).innerJoin(roles,eq(userRoles.roleId,roles.id)).where(eq(users.email,email)).limit(1);const row=rows[0];if(!row||row.status!=="ACTIVE"||!(await compare(password,row.passwordHash)))return NextResponse.json({error:"Email atau password salah."},{status:401});await createSession({userId:row.userId,email:row.email,name:row.name,role:row.roleCode,organizationId:row.organizationId,studyProgramId:row.studyProgramId});return NextResponse.redirect(new URL("/internal",request.url),303);}
+
+export async function POST(request:Request){
+  const form=await request.formData();
+  const email=String(form.get("email")??"").trim().toLowerCase();
+  const password=String(form.get("password")??"");
+  const db=requireDb();
+  const [user]=await db.select({userId:users.id,email:users.email,name:users.name,passwordHash:users.passwordHash,status:users.status}).from(users).where(eq(users.email,email)).limit(1);
+  if(!user||user.status!=="ACTIVE"||!(await compare(password,user.passwordHash)))return NextResponse.json({error:"Email atau password salah."},{status:401});
+  const grants=await db.select({roleCode:roles.code,roleStatus:roleSettings.status,organizationId:userRoles.organizationId,studyProgramId:userRoles.studyProgramId,permissionCode:permissions.code})
+    .from(userRoles)
+    .innerJoin(roles,eq(userRoles.roleId,roles.id))
+    .leftJoin(roleSettings,eq(roleSettings.roleId,roles.id))
+    .leftJoin(rolePermissions,eq(rolePermissions.roleId,roles.id))
+    .leftJoin(permissions,eq(permissions.id,rolePermissions.permissionId))
+    .where(eq(userRoles.userId,user.userId));
+  const active=grants.filter(g=>!g.roleStatus||g.roleStatus==="ACTIVE");
+  if(!active.length)return NextResponse.json({error:"User belum mempunyai role aktif."},{status:403});
+  const roleList=[...new Set(active.map(g=>g.roleCode))];
+  const permissionList=[...new Set(active.map(g=>g.permissionCode).filter((x):x is string=>Boolean(x)))];
+  const scopeMap=new Map<string,{role:string;organizationId:number;studyProgramId?:number|null}>();
+  for(const g of active){const key=`${g.roleCode}:${g.organizationId}:${g.studyProgramId??"*"}`;scopeMap.set(key,{role:g.roleCode,organizationId:g.organizationId,studyProgramId:g.studyProgramId});}
+  const scopes=[...scopeMap.values()];
+  const primary=scopes[0];
+  await createSession({userId:user.userId,email:user.email,name:user.name,roles:roleList,permissions:permissionList,scopes,role:primary?.role,organizationId:primary?.organizationId,studyProgramId:primary?.studyProgramId});
+  return NextResponse.redirect(new URL("/internal",request.url),303);
+}
