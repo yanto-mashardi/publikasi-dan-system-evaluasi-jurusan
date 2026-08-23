@@ -1,0 +1,14 @@
+import { eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { requireDb } from "@/src/db";
+import { cpl } from "@/src/db/schema-phase5";
+import { getSession } from "@/src/lib/auth";
+import { can } from "@/src/lib/rbac";
+import { audit } from "@/src/lib/audit";
+import { canAccessCurriculum } from "@/src/services/academic-scope";
+const patch=z.object({code:z.string().min(1).max(50).optional(),category:z.string().max(50).nullable().optional(),description:z.string().min(3).optional(),sequence:z.number().int().positive().optional(),status:z.enum(["ACTIVE","ARCHIVED"]).optional()});
+async function idOf(params:Promise<{id:string}>){const{id}=await params;const n=Number(id);return Number.isInteger(n)&&n>0?n:null;}
+async function getRow(id:number){const db=requireDb();const[row]=await db.select().from(cpl).where(eq(cpl.id,id)).limit(1);return row??null;}
+export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){const s=await getSession();if(!s)return NextResponse.json({error:"Unauthorized"},{status:401});if(!(can(s,"curriculum.manage")||can(s,"data.update")))return NextResponse.json({error:"Forbidden"},{status:403});const id=await idOf(params);if(!id)return NextResponse.json({error:"Invalid id"},{status:400});const p=patch.safeParse(await req.json());if(!p.success)return NextResponse.json({error:p.error.flatten()},{status:400});const before=await getRow(id);if(!before)return NextResponse.json({error:"Not found"},{status:404});if(!(await canAccessCurriculum(s,before.curriculumId)))return NextResponse.json({error:"Scope kurikulum tidak sesuai."},{status:403});const db=requireDb();await db.update(cpl).set(p.data).where(eq(cpl.id,id));await audit({actorId:s.userId,action:"UPDATE_CPL",subjectType:"CPL",subjectId:id,before,after:p.data});return NextResponse.json({id,...p.data});}
+export async function DELETE(_:Request,{params}:{params:Promise<{id:string}>}){const s=await getSession();if(!s)return NextResponse.json({error:"Unauthorized"},{status:401});if(!(can(s,"curriculum.manage")||can(s,"data.update")))return NextResponse.json({error:"Forbidden"},{status:403});const id=await idOf(params);if(!id)return NextResponse.json({error:"Invalid id"},{status:400});const before=await getRow(id);if(!before)return NextResponse.json({error:"Not found"},{status:404});if(!(await canAccessCurriculum(s,before.curriculumId)))return NextResponse.json({error:"Scope kurikulum tidak sesuai."},{status:403});const db=requireDb();await db.update(cpl).set({status:"ARCHIVED"}).where(eq(cpl.id,id));await audit({actorId:s.userId,action:"ARCHIVE_CPL",subjectType:"CPL",subjectId:id,before,after:{status:"ARCHIVED"}});return NextResponse.json({id,status:"ARCHIVED"});}
