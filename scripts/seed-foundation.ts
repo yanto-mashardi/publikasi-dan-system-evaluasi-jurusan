@@ -4,14 +4,14 @@ import { organizations,permissions,publicationPolicies,rolePermissions,roles,stu
 import { roleSettings } from "../src/db/schema-admin";
 
 const ROLE_NAMES:Record<string,string>={ADMIN_SYSTEM:"Admin Sistem",ADMIN_DATA:"Admin Data",KAPRODI:"Kaprodi",GKM:"GKM",SEKJUR:"Sekjur",KAJUR:"Kajur",VIEWER_INTERNAL:"Viewer Internal"};
-const PERMISSIONS=["system.configure","users.manage","roles.manage","master.manage","audit.read","data.create","data.update","evidence.upload","publication.execute","news.manage","program.read","program.update","curriculum.manage","kpi.measure","followup.execute","quality.read","evidence.verify","evaluation.create","finding.create","recommendation.create","followup.verify","publication.recommend","data.verify","workflow.coordinate","publication.review","approval.final","evaluation.approve","publication.approve","report.approve","internal.read","resources.read","resources.manage","resources.contribute","accreditation.read","accreditation.framework.manage","accreditation.assign"];
+const PERMISSIONS=["system.configure","users.manage","roles.manage","master.manage","audit.read","data.create","data.update","evidence.upload","publication.execute","news.manage","program.read","program.update","curriculum.manage","kpi.measure","followup.execute","quality.read","evidence.verify","evaluation.create","finding.create","recommendation.create","followup.verify","publication.recommend","data.verify","workflow.coordinate","publication.review","approval.final","evaluation.approve","publication.approve","report.approve","internal.read","resources.read","resources.manage","resources.contribute","accreditation.read","accreditation.framework.manage","accreditation.assign","accreditation.assess","accreditation.approve","accreditation.publish"];
 const ROLE_GRANTS:Record<string,string[]>={
  ADMIN_SYSTEM:PERMISSIONS,
- ADMIN_DATA:["data.create","data.update","evidence.upload","publication.execute","news.manage","internal.read","resources.read","resources.manage","accreditation.read"],
+ ADMIN_DATA:["data.create","data.update","evidence.upload","publication.execute","news.manage","internal.read","resources.read","resources.manage","accreditation.read","accreditation.assess"],
  KAPRODI:["program.read","program.update","curriculum.manage","kpi.measure","evidence.upload","followup.execute","internal.read","resources.read","resources.contribute","accreditation.read"],
- GKM:["quality.read","evidence.verify","evaluation.create","finding.create","recommendation.create","followup.verify","publication.recommend","internal.read","resources.read","accreditation.read"],
+ GKM:["quality.read","evidence.verify","evaluation.create","finding.create","recommendation.create","followup.verify","publication.recommend","internal.read","resources.read","accreditation.read","accreditation.assess"],
  SEKJUR:["data.verify","workflow.coordinate","publication.review","followup.verify","internal.read","resources.read","resources.manage","accreditation.read"],
- KAJUR:["approval.final","evaluation.approve","publication.approve","report.approve","internal.read","resources.read","accreditation.read"],
+ KAJUR:["approval.final","evaluation.approve","publication.approve","report.approve","internal.read","resources.read","accreditation.read","accreditation.approve","accreditation.publish"],
  VIEWER_INTERNAL:["internal.read","resources.read","accreditation.read"]
 };
 const POLICIES=[

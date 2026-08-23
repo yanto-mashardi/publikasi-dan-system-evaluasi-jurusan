@@ -60,15 +60,25 @@ Program Studi
 
 Seed awal menggunakan LAM Teknik 2025 reference structure dengan tiga klaster IPO dan tujuh kriteria. Framework tidak otomatis ditautkan ke Prodi. Assignment harus eksplisit sesuai cakupan resmi.
 
-## Phase 7 — Accreditation & Compliance — NEXT MAJOR PHASE
-Tahap berikutnya melengkapi registry menjadi assessment engine:
+## Phase 7 — Accreditation & Compliance — INITIAL VERTICAL SLICE AVAILABLE
+Vertical slice assessment engine kini menyediakan:
+
+- cockpit berdasarkan assignment framework, Prodi, dan periode;
+- view INPUT / PROCESS / OUTPUT-OUTCOME, kriteria, dan indikator;
+- fakta aktual, hasil/catatan perhitungan, analisis, evaluasi gap, dan catatan LED;
+- tautan record sumber/evidence;
+- status kesiapan internal;
+- keputusan internal/publik;
+- lifecycle DRAFT → SUBMITTED → APPROVED → PUBLISHED;
+- projection assessment terpilih ke `/akreditasi`.
+
+Pengembangan Phase 7 berikutnya tetap mencakup:
 
 - import/entry indikator instrumen spesifik;
 - indicator-to-source mapping;
-- evidence readiness;
-- self-assessment internal;
-- gap analysis;
-- improvement action;
+- perhitungan readiness otomatis berdasarkan scoring rule resmi;
+- agregasi evidence requirement dan gap otomatis;
+- improvement action terhubung per indikator;
 - official accreditation status;
 - LED/LKPS/borang views.
 

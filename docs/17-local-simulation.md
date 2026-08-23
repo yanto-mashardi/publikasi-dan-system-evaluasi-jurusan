@@ -115,6 +115,7 @@ Data publik boleh kosong sebelum ada record yang melalui approval/publication. K
 - `/internal/academic`
 - `/internal/resources`
 - `/internal/accreditation`
+- `/internal/accreditation/cockpit`
 - `/internal/workflow`
 
 ### Workflow Tata Kelola
@@ -170,6 +171,24 @@ Pada `/internal/accreditation`:
 8. aktifkan framework;
 9. tautkan framework ACTIVE tersebut ke satu Prodi;
 10. pastikan framework ACTIVE tidak dapat diubah in-place.
+
+### Accreditation Cockpit
+
+Setelah login, `/internal` mengarahkan pengguna ke `/internal/accreditation/cockpit`.
+
+1. pilih assignment yang menampilkan Jurusan, Program Studi, lembaga, dan framework;
+2. isi periode evaluasi;
+3. filter kriteria bila diperlukan;
+4. buka klaster INPUT, PROCESS, atau OUTPUT/OUTCOME;
+5. pada indikator, isi fakta aktual, hasil/catatan perhitungan, analisis, evaluasi gap, dan catatan LED;
+6. tautkan tipe dan ID record sumber atau evidence yang mendukung;
+7. pilih `INTERNAL_ONLY` atau `PUBLIC_CANDIDATE`;
+8. simpan draft atau submit;
+9. approver menyetujui atau mengembalikan assessment;
+10. publisher hanya dapat menerbitkan assessment `APPROVED` yang ditandai `PUBLIC_CANDIDATE`;
+11. periksa hasil publik di `/akreditasi`.
+
+Framework `LAMTEKNIK-2025-DEMO-D3` dan indikator berawalan `CONTOH` hanya untuk simulasi aplikasi. Isinya bukan matriks penilaian resmi dan harus diganti dengan framework/instrumen resmi melalui registry sebelum penggunaan institusional.
 
 ## 7. Validation Command
 

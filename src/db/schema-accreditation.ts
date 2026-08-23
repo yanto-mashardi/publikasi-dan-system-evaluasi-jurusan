@@ -110,3 +110,35 @@ export const studyProgramAccreditationFrameworks=mysqlTable("study_program_accre
   createdAt:timestamp("created_at").defaultNow().notNull(),
   updatedAt:timestamp("updated_at").defaultNow().notNull(),
 },t=>[uniqueIndex("study_program_framework_uq").on(t.studyProgramId,t.frameworkId)]);
+
+export const accreditationAssessments=mysqlTable("accreditation_assessments",{
+  id:id(),
+  assignmentId:bigint("assignment_id",{mode:"number"}).notNull(),
+  indicatorId:bigint("indicator_id",{mode:"number"}).notNull(),
+  period:varchar("period",{length:50}).notNull(),
+  readinessStatus:varchar("readiness_status",{length:30}).notNull().default("NOT_ASSESSED"),
+  actualValue:varchar("actual_value",{length:255}),
+  calculatedValue:varchar("calculated_value",{length:255}),
+  calculationNote:text("calculation_note"),
+  analysis:text("analysis"),
+  evaluationNote:text("evaluation_note"),
+  ledNote:text("led_note"),
+  publicationDecision:varchar("publication_decision",{length:30}).notNull().default("INTERNAL_ONLY"),
+  workflowStatus:varchar("workflow_status",{length:30}).notNull().default("DRAFT"),
+  assessedBy:bigint("assessed_by",{mode:"number"}).notNull(),
+  approvedBy:bigint("approved_by",{mode:"number"}),
+  createdAt:timestamp("created_at").defaultNow().notNull(),
+  updatedAt:timestamp("updated_at").defaultNow().notNull(),
+},t=>[uniqueIndex("accreditation_assessment_period_uq").on(t.assignmentId,t.indicatorId,t.period)]);
+
+export const accreditationAssessmentSources=mysqlTable("accreditation_assessment_sources",{
+  id:id(),
+  assessmentId:bigint("assessment_id",{mode:"number"}).notNull(),
+  sourceSubjectType:varchar("source_subject_type",{length:120}).notNull(),
+  sourceSubjectId:bigint("source_subject_id",{mode:"number"}),
+  referenceTitle:varchar("reference_title",{length:700}).notNull(),
+  evidenceId:bigint("evidence_id",{mode:"number"}),
+  note:text("note"),
+  includeInPublic:boolean("include_in_public").notNull().default(false),
+  createdAt:timestamp("created_at").defaultNow().notNull(),
+});
