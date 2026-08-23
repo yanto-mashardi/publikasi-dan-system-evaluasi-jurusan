@@ -7,5 +7,5 @@ import * as phase5Schema from "./schema-phase5";
 const databaseUrl=process.env.DATABASE_URL;
 const pool=databaseUrl?mysql.createPool(databaseUrl):null;
 const schema={...coreSchema,...adminSchema,...phase5Schema};
-export const db=pool?drizzle(pool,{schema}):null;
+export const db=pool?drizzle(pool,{schema,mode:"default"}):null;
 export function requireDb(){if(!db)throw new Error("DATABASE_URL belum dikonfigurasi.");return db;}
