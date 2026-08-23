@@ -116,17 +116,6 @@ export const accreditationEvidenceRequirements=mysqlTable("accreditation_evidenc
   status:varchar("status",{length:30}).notNull().default("ACTIVE"),
 },t=>[uniqueIndex("accreditation_evidence_indicator_code_uq").on(t.indicatorId,t.code)]);
 
-export const accreditationIndicatorMappings=mysqlTable("accreditation_indicator_mappings",{
-  id:id(),
-  indicatorId:bigint("indicator_id",{mode:"number"}).notNull(),
-  sourceSubjectType:varchar("source_subject_type",{length:120}).notNull(),
-  sourceField:varchar("source_field",{length:255}),
-  filterConfig:json("filter_config"),
-  transformRule:json("transform_rule"),
-  status:varchar("status",{length:30}).notNull().default("ACTIVE"),
-  createdAt:timestamp("created_at").defaultNow().notNull(),
-});
-
 export const studyProgramAccreditationFrameworks=mysqlTable("study_program_accreditation_frameworks",{
   id:id(),
   studyProgramId:bigint("study_program_id",{mode:"number"}).notNull(),
