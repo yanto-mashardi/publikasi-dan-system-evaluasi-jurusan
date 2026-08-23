@@ -1,0 +1,50 @@
+roles:
+  admin_system:
+    permissions:
+      - system.configure
+      - users.manage
+      - roles.manage
+      - master_data.manage
+      - audit.read
+
+  admin_data:
+    permissions:
+      - data.create
+      - data.update
+      - evidence.upload
+      - publication.execute
+
+  kaprodi:
+    scope: study_program
+    permissions:
+      - program.read
+      - program.update
+      - curriculum.manage
+      - kpi.measure
+      - evidence.upload
+      - followup.execute
+
+  gkm:
+    scope: upps
+    permissions:
+      - quality.read
+      - evidence.verify
+      - evaluation.create
+      - finding.create
+      - recommendation.create
+      - followup.verify
+
+  sekjur:
+    scope: upps
+    permissions:
+      - data.verify
+      - workflow.coordinate
+      - publication.review
+
+  kajur:
+    scope: upps
+    permissions:
+      - approval.final
+      - evaluation.approve
+      - publication.approve
+      - report.approve
