@@ -1,0 +1,20 @@
+flowchart TD
+    A[Master Data] --> B[Planning]
+    B --> C[Target / Standard]
+    C --> D[Execution]
+    D --> E[Measurement]
+    E --> F[Evidence]
+    C --> G[Evaluation Engine]
+    E --> G
+    F --> G
+    G --> H[Finding]
+    G --> I[Recommendation]
+    I --> J[Follow-up]
+    J --> K[Verification]
+    K --> L[Approval]
+    L --> M{Visibility Policy}
+    M -- Internal --> N[Internal Archive]
+    M -- Public --> O[Publication Layer]
+    O --> P[Public Portal]
+    L --> Q[Accreditation Mapping]
+    Q --> R[Readiness / Gap]
