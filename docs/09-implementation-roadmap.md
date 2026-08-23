@@ -2,7 +2,7 @@
 
 ## Implementation Status
 
-Phase 1–4 telah memiliki MVP vertical slice dan Dynamic Administration Layer. **Phase 5 Academic & OBE juga telah memiliki vertical slice awal**. Phase 6 menjadi tahap implementasi berikutnya.
+Phase 1–4 telah memiliki MVP vertical slice dan Dynamic Administration Layer. **Phase 5 Academic & OBE memiliki vertical slice awal dan sengaja akan disempurnakan kembali setelah seluruh domain utama berjalan. Phase 6 Resources and Extended Domains sudah tersedia di `main` untuk simulasi lokal.**
 
 ## Phase 0 — Architecture Freeze — DONE
 Domain model, role model, lifecycle, public/private policy, terminology, dynamic administration, archive policy.
@@ -19,16 +19,60 @@ Generic evaluation engine, findings, recommendations, follow-up, verification, d
 ## Phase 4 — Public Projection — MVP DONE
 Publication queue, publication approval, field policy, public API/views, public dashboard, editorial/news publication.
 
-## Phase 5 — Academic & OBE Integration — VERTICAL SLICE DONE
+## Phase 5 — Academic & OBE Integration — VERTICAL SLICE DONE / REFINEMENT LATER
 Dynamic/versioned curriculum, profil lulusan, CPL, mata kuliah, CPMK, mapping CPMK–CPL, curriculum review melalui generic Evaluation Engine, stakeholder metadata, OBE import staging, approval dan public curriculum projection.
 
-Remaining refinement pada Phase 5 dapat dilakukan iteratif saat sumber OBE lama benar-benar dihubungkan: mapping kolom Google Sheet/CSV ke schema baru, import validation report, dan attainment calculation dari data assessment.
+Refinement Phase 5 akan dilakukan setelah keseluruhan sistem berjalan, terutama struktur kurikulum/OBE, mapping sumber OBE lama, import validation, dan attainment calculation.
 
-## Phase 6 — Resources and Extended Domains — NEXT
-Laboratorium bersama lintas Prodi, equipment, utilization, maintenance, K3L, lecturer/staff summary, research, PkM, students/graduates, cooperation. Laboratorium berada pada scope UPPS dan dapat dipetakan ke satu atau lebih Program Studi.
+## Phase 6 — Resources and Extended Domains — VERTICAL SLICE DONE / LOCAL SIMULATION
+Sudah tersedia:
 
-## Phase 7 — Accreditation & Compliance
-Configurable frameworks (BAN-PT/LAM/standar lain), criteria, indicator mapping, self-assessment, gap analysis, evidence readiness, dan official accreditation status. Modul ini **membaca data yang sudah tersedia dari Phase 1–6** dan tidak membuat database fakta kedua.
+- laboratorium bersama lintas Prodi;
+- profil laboratorium versioned;
+- equipment/inventaris;
+- utilization/penggunaan;
+- maintenance;
+- K3L;
+- personnel/SDM;
+- penelitian;
+- PkM;
+- statistik mahasiswa;
+- outcome lulusan;
+- kerja sama;
+- scope UPPS/Prodi;
+- generic evaluation/follow-up integration;
+- approval/publication projection;
+- public views dan `/internal/resources`.
+
+## Dynamic Accreditation Registry — FOUNDATION AVAILABLE
+Sebagai persiapan Phase 7, registry akreditasi dinamis sudah tersedia:
+
+```text
+Program Studi
+→ Accreditation Agency
+→ Framework / Instrument Version
+→ Criteria
+→ Cluster(s)
+→ Indicators
+→ Evidence Requirements
+→ Source Mapping
+```
+
+Seed awal menggunakan LAM Teknik 2025 reference structure dengan tiga klaster IPO dan tujuh kriteria. Framework tidak otomatis ditautkan ke Prodi. Assignment harus eksplisit sesuai cakupan resmi.
+
+## Phase 7 — Accreditation & Compliance — NEXT MAJOR PHASE
+Tahap berikutnya melengkapi registry menjadi assessment engine:
+
+- import/entry indikator instrumen spesifik;
+- indicator-to-source mapping;
+- evidence readiness;
+- self-assessment internal;
+- gap analysis;
+- improvement action;
+- official accreditation status;
+- LED/LKPS/borang views.
+
+Modul ini **membaca data yang sudah tersedia dari Phase 1–6** dan tidak membuat database fakta kedua.
 
 ## Phase 8 — Analytics
 Trend analysis, early warning, overdue follow-up, KPI heatmap, curriculum attainment, laboratory utilization, accreditation readiness, dan public transparency dashboard.
@@ -48,3 +92,7 @@ Governed Source Data
 ```
 
 Akreditasi ditempatkan setelah domain sumber utama tersedia agar tetap menjadi consumer dari data yang sama, bukan tempat input ulang data akreditasi.
+
+## Local Simulation
+
+Panduan pengujian lokal: `docs/17-local-simulation.md`.
