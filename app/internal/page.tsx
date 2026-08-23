@@ -1,6 +1,102 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSession } from "@/src/lib/auth";
+import { getSession, type SessionUser } from "@/src/lib/auth";
 import { can } from "@/src/lib/rbac";
-export const dynamic="force-dynamic";
-export default async function InternalDashboard(){const session=await getSession();if(!session)redirect("/internal/login");const modules=[{title:"Perencanaan",desc:"VMTS, Renstra, sasaran strategis, KPI dan target."},{title:"Akademik & OBE",desc:"Kurikulum, profil lulusan, CPL, mata kuliah, CPMK, mapping dan evaluasi kurikulum.",href:"/internal/academic"},{title:"Sumber Daya & Tridharma",desc:"Laboratorium lintas Prodi, SDM, penelitian, PkM, mahasiswa/lulusan dan kerja sama.",href:"/internal/resources"},{title:"Kinerja",desc:"Realisasi KPI, perhitungan capaian, dan evidence."},{title:"Mutu",desc:"Evaluasi generik, temuan, rekomendasi, tindak lanjut, verifikasi."},{title:"Akreditasi",desc:"Registry lembaga, framework/instrumen, klaster, kriteria, indikator, evidence requirement, dan assignment per Prodi.",href:"/internal/accreditation"},{title:"Publikasi",desc:"Antrian objek yang sudah approved untuk diproyeksikan ke portal publik."}];const adminAllowed=["master.manage","users.manage","roles.manage","news.manage","approval.final","publication.execute"].some(p=>can(session,p));return <main className="shell"><section className="hero"><div className="eyebrow">Internal Governance Workspace</div><h1>Dashboard UPPS</h1><p className="muted">{session.name} · {(session.roles??[]).join(", ")}</p></section><div className="grid">{modules.map(x=><div className="card module" key={x.title}><h3>{x.title}</h3><p className="muted">{x.desc}</p>{x.href&&<Link href={x.href}>Buka modul →</Link>}</div>)}{adminAllowed&&<div className="card module"><h3>Administrasi Dinamis</h3><p className="muted">Kelola organisasi, Prodi, user, role, dan berita sesuai permission.</p><Link href="/internal/admin">Buka administrasi →</Link></div>}</div><section className="section"><h2>Workflow inti</h2><div className="flow"><span>DRAFT</span>→<span>SUBMITTED</span>→<span>VERIFIED/EVALUATED bila relevan</span>→<span>APPROVED</span>→<span>EFFECTIVE</span>→<span>PUBLISHED</span></div></section><p><Link href="/akademik">Akademik publik</Link> · <Link href="/laboratorium">Laboratorium</Link> · <Link href="/riset-pkm">Riset & PkM</Link> · <Link href="/mahasiswa-lulusan">Mahasiswa & Lulusan</Link> · <Link href="/kerja-sama">Kerja Sama</Link> · <Link href="/berita">Berita</Link></p><form action="/api/auth/logout" method="post"><button className="button">Keluar</button></form><p style={{marginTop:16}}><Link href="/api/health">Health check</Link></p></main>}
+import "./dashboard.css";
+import "./dashboard-shell.css";
+
+export const dynamic = "force-dynamic";
+
+type NavigationItem = { title: string; description: string; href?: string; permissions?: string[] };
+
+const operationalNavigation: NavigationItem[] = [
+  { title: "Perencanaan", description: "VMTS, Renstra, sasaran strategis, KPI, dan target." },
+  { title: "Akademik & OBE", description: "Kurikulum, profil lulusan, CPL, CPMK, dan evaluasi kurikulum.", href: "/internal/academic", permissions: ["curriculum.manage", "data.create", "data.update", "evaluation.create", "approval.final", "publication.execute", "internal.read"] },
+  { title: "Sumber Daya & Tridharma", description: "Laboratorium, SDM, penelitian, PkM, mahasiswa/lulusan, dan kerja sama.", href: "/internal/resources", permissions: ["resources.read", "resources.manage", "resources.contribute", "evaluation.create", "approval.final", "publication.execute"] },
+  { title: "Kinerja", description: "Realisasi KPI, perhitungan capaian, dan evidence." },
+  { title: "Mutu", description: "Evaluasi, temuan, rekomendasi, tindak lanjut, dan verifikasi." },
+  { title: "Akreditasi", description: "Framework, kriteria, indikator, kebutuhan evidence, dan assignment Prodi.", href: "/internal/accreditation", permissions: ["accreditation.read"] },
+  { title: "Publikasi", description: "Proyeksi record yang telah disahkan ke portal publik." },
+];
+
+const ipoColumns = [
+  { key: "01", title: "Input", subtitle: "Masukan", description: "Kondisi, sumber daya, kebijakan, standar, rencana, dan desain yang menjadi prasyarat penyelenggaraan.", groups: [
+    { label: "Arah & tata kelola", items: "Organisasi UPPS dan Prodi, VMTS, Renstra, standar, target KPI" },
+    { label: "Akademik", items: "Kurikulum, profil lulusan, CPL, CPMK, mata kuliah, mahasiswa input" },
+    { label: "Sumber daya", items: "SDM, laboratorium, equipment, kapasitas, kesiapan K3L" },
+    { label: "Pendukung", items: "Roadmap tridharma, kerja sama, dan sumber pendukung" },
+  ] },
+  { key: "02", title: "Process", subtitle: "Proses", description: "Pelaksanaan, pengendalian, pengukuran, evaluasi, dan peningkatan terhadap masukan yang dikelola.", groups: [
+    { label: "Pelaksanaan", items: "Renstra dan program kerja, pembelajaran/OBE, penelitian, PkM" },
+    { label: "Pengelolaan sumber daya", items: "Penggunaan laboratorium, maintenance, pemeriksaan K3L" },
+    { label: "Pengendalian mutu", items: "Measurement KPI, evidence, evaluasi, temuan, dan rekomendasi" },
+    { label: "Keputusan", items: "Tindak lanjut, verifikasi efektivitas, approval, dan governance decision" },
+  ] },
+  { key: "03", title: "Output / Outcome", subtitle: "Luaran & dampak", description: "Hasil yang menunjukkan performa, efektivitas proses, dan dampak penyelenggaraan yang dapat ditelusuri.", groups: [
+    { label: "Kinerja", items: "Capaian KPI, sasaran, dan status target" },
+    { label: "Akademik & lulusan", items: "Capaian CPL, kelulusan, masa studi, dan outcome lulusan" },
+    { label: "Tridharma & sumber daya", items: "Luaran penelitian/PkM, hasil kerja sama, kinerja pemanfaatan sumber daya" },
+    { label: "Peningkatan & transparansi", items: "Efektivitas tindak lanjut, laporan, dan informasi yang telah disahkan" },
+  ] },
+];
+
+function allowed(user: SessionUser, item: NavigationItem) {
+  return !item.permissions || item.permissions.some((permission) => can(user, permission));
+}
+
+export default async function InternalDashboard() {
+  const session = await getSession();
+  if (!session) redirect("/internal/login");
+  const navigation = operationalNavigation.filter((item) => allowed(session, item));
+  const adminAllowed = ["master.manage", "users.manage", "roles.manage", "news.manage", "approval.final", "publication.execute"].some((permission) => can(session, permission));
+  const scopeCount = session.scopes?.length ?? 0;
+
+  return <main className="internal-dashboard">
+    <header className="dashboard-header">
+      <div><div className="dashboard-brand">UPPS Governance</div><p>Workspace internal</p></div>
+      <div className="dashboard-user">
+        <div><strong>{session.name}</strong><span>{(session.roles ?? []).join(", ") || "Pengguna internal"}</span></div>
+        <form action="/api/auth/logout" method="post"><button className="dashboard-logout" type="submit">Keluar</button></form>
+      </div>
+    </header>
+
+    <div className="dashboard-layout">
+      <aside className="dashboard-sidebar" aria-label="Navigasi domain operasional">
+        <div className="sidebar-heading"><span>Domain operasional</span><p>Kelola data sumber melalui modul yang tersedia.</p></div>
+        <nav className="domain-nav">
+          {navigation.map((item, index) => item.href ? <Link className="domain-nav-item" href={item.href} key={item.title}>
+            <span className="domain-number">{String(index + 1).padStart(2, "0")}</span>
+            <span><strong>{item.title}</strong><small>{item.description}</small></span><span className="domain-arrow" aria-hidden="true">→</span>
+          </Link> : <div className="domain-nav-item domain-nav-item-static" key={item.title}>
+            <span className="domain-number">{String(index + 1).padStart(2, "0")}</span><span><strong>{item.title}</strong><small>{item.description}</small></span>
+          </div>)}
+        </nav>
+        {adminAllowed && <Link className="admin-link" href="/internal/admin"><span>Administrasi sistem</span><small>Organisasi, Prodi, pengguna, role, dan berita</small></Link>}
+      </aside>
+
+      <div className="dashboard-content">
+        <section className="dashboard-intro">
+          <div><div className="dashboard-kicker">Accreditation & governance view</div><h1>Data yang sama, dibaca sebagai alur tata kelola yang utuh.</h1><p>INPUT, PROCESS, dan OUTPUT/OUTCOME adalah tampilan lintas-domain atas record operasional—bukan database atau proses baru.</p></div>
+          <div className="access-context" aria-label="Konteks akses pengguna"><span>Konteks akses</span><strong>{scopeCount > 0 ? `${scopeCount} scope organisasi / Prodi` : "Mengikuti permission pengguna"}</strong><small>Framework, Prodi, dan periode dipilih di modul terkait saat datanya tersedia.</small></div>
+        </section>
+
+        <section className="ipo-section" aria-labelledby="ipo-heading">
+          <div className="section-heading-row"><div><span className="section-label">Peta data tata kelola</span><h2 id="ipo-heading">Input → Process → Output / Outcome</h2></div>{can(session,"accreditation.read") && <Link className="text-link" href="/internal/accreditation">Buka registry akreditasi →</Link>}</div>
+          <div className="ipo-grid">{ipoColumns.map((column, columnIndex) => <article className={`ipo-card ipo-card-${columnIndex + 1}`} key={column.title}>
+            <div className="ipo-card-head"><span>{column.key}</span><div><p>{column.subtitle}</p><h3>{column.title}</h3></div></div>
+            <p className="ipo-description">{column.description}</p>
+            <div className="ipo-groups">{column.groups.map((group) => <div className="ipo-group" key={group.label}><strong>{group.label}</strong><p>{group.items}</p></div>)}</div>
+            {columnIndex < ipoColumns.length - 1 && <span className="ipo-connector" aria-hidden="true">→</span>}
+          </article>)}</div>
+          <p className="dashboard-note">Dashboard ini belum menampilkan skor readiness atau gap. Perhitungan tersebut baru dapat ditampilkan setelah pemetaan indikator, evidence, dan aturan readiness Phase 7 tersedia.</p>
+        </section>
+
+        <section className="governance-strip" aria-labelledby="workflow-heading">
+          <div className="governance-copy"><span className="section-label">Lifecycle record</span><h2 id="workflow-heading">Dari data kerja menjadi informasi yang sah</h2><p>Setiap domain tetap memakai backend dinamis, RBAC, audit trail, evaluasi, approval, dan publication layer yang sudah ada.</p></div>
+          <ol className="lifecycle"><li><span>01</span><strong>Draft</strong></li><li><span>02</span><strong>Submitted</strong></li><li><span>03</span><strong>Verified / Evaluated</strong><small>bila relevan</small></li><li><span>04</span><strong>Approved</strong></li><li><span>05</span><strong>Effective</strong></li><li><span>06</span><strong>Published</strong></li></ol>
+        </section>
+        <footer className="dashboard-footer"><span>Internal Governance Workspace</span><div><Link href="/">Portal publik</Link><Link href="/api/health">Status sistem</Link></div></footer>
+      </div>
+    </div>
+  </main>;
+}
