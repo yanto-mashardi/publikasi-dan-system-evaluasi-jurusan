@@ -5,6 +5,7 @@ import { requireDb } from "@/src/db";
 import { permissions,rolePermissions,roles,userRoles,users } from "@/src/db/schema";
 import { roleSettings } from "@/src/db/schema-admin";
 import { createSession } from "@/src/lib/auth";
+import { isMasterApplication } from "@/src/lib/application-mode";
 
 export async function POST(request:Request){
   const form=await request.formData();
@@ -29,5 +30,5 @@ export async function POST(request:Request){
   const scopes=[...scopeMap.values()];
   const primary=scopes[0];
   await createSession({userId:user.userId,email:user.email,name:user.name,roles:roleList,permissions:permissionList,scopes,role:primary?.role,organizationId:primary?.organizationId,studyProgramId:primary?.studyProgramId});
-  return NextResponse.redirect(new URL("/internal",request.url),303);
+  return NextResponse.redirect(new URL(isMasterApplication()?"/master":"/internal",request.url),303);
 }

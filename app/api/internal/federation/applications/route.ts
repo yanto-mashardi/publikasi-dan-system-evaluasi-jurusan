@@ -6,13 +6,14 @@ import { federatedApplications } from "@/src/db/schema-admin";
 import { audit } from "@/src/lib/audit";
 import { getSession } from "@/src/lib/auth";
 import { can } from "@/src/lib/rbac";
+import { isMasterApplication } from "@/src/lib/application-mode";
 import { decryptFederationToken,encryptFederationToken,normalizedFederationUrl } from "@/src/services/federation-security";
 
 const createInput=z.object({code:z.string().min(2).max(80),name:z.string().min(2).max(255),baseUrl:z.string().url().max(700),organizationCode:z.string().max(80).optional(),accessToken:z.string().min(24)});
 const updateInput=z.object({id:z.number().int().positive(),action:z.literal("UPDATE"),name:z.string().min(2).max(255).optional(),baseUrl:z.string().url().max(700).optional(),organizationCode:z.string().max(80).nullable().optional(),accessToken:z.string().min(24).optional(),status:z.enum(["ACTIVE","ARCHIVED"]).optional()});
 const syncInput=z.object({id:z.number().int().positive(),action:z.literal("SYNC")});
 const patchInput=z.discriminatedUnion("action",[updateInput,syncInput]);
-async function sessionGuard(){const session=await getSession();if(!session)return {response:NextResponse.json({error:"Unauthorized"},{status:401})};if(!can(session,"system.configure"))return {response:NextResponse.json({error:"Forbidden"},{status:403})};return {session};}
+async function sessionGuard(){const session=await getSession();if(!session)return {response:NextResponse.json({error:"Unauthorized"},{status:401})};if(!isMasterApplication())return {response:NextResponse.json({error:"Federasi hanya tersedia pada aplikasi Master."},{status:409})};if(!can(session,"system.configure"))return {response:NextResponse.json({error:"Forbidden"},{status:403})};return {session};}
 
 export async function GET(){const auth=await sessionGuard();if(auth.response)return auth.response;const rows=await requireDb().select().from(federatedApplications);return NextResponse.json(rows.map(({encryptedAccessToken,...row})=>({...row,hasAccessToken:Boolean(encryptedAccessToken)})));}
 export async function POST(req:Request){const auth=await sessionGuard();if(auth.response)return auth.response;const parsed=createInput.safeParse(await req.json());if(!parsed.success)return NextResponse.json({error:parsed.error.flatten()},{status:400});const db=requireDb();let baseUrl:string;try{baseUrl=normalizedFederationUrl(parsed.data.baseUrl);}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"URL tidak valid."},{status:400});}const result=await db.insert(federatedApplications).values({code:parsed.data.code.toUpperCase(),name:parsed.data.name,baseUrl,organizationCode:parsed.data.organizationCode?.toUpperCase(),encryptedAccessToken:encryptFederationToken(parsed.data.accessToken),status:"ACTIVE",connectionStatus:"NOT_CHECKED"});const id=Number(result[0].insertId);await audit({actorId:auth.session!.userId,action:"CREATE_FEDERATED_APPLICATION",subjectType:"FEDERATED_APPLICATION",subjectId:id,after:{...parsed.data,accessToken:"[REDACTED]",baseUrl}});return NextResponse.json({id,status:"ACTIVE"},{status:201});}

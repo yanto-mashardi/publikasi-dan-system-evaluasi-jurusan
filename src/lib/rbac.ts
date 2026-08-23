@@ -1,6 +1,8 @@
 import type { SessionUser } from "./auth";
+import {isMasterApplication} from "./application-mode";
 
 export function can(user:SessionUser|null,permission:string){
+  if(permission==="accreditation.framework.manage"&&!isMasterApplication())return false;
   return !!user&&Array.isArray(user.permissions)&&user.permissions.includes(permission);
 }
 
