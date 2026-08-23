@@ -1,0 +1,2 @@
+export type Direction="HIGHER_IS_BETTER"|"LOWER_IS_BETTER"|"EXACT";
+export function calculateAchievement(target:number,actual:number,direction:Direction){if(target===0)return{percent:0,status:"UNDEFINED"};let percent=direction==="LOWER_IS_BETTER"?(target/actual)*100:(actual/target)*100;if(!Number.isFinite(percent))percent=0;const status=direction==="EXACT"?(actual===target?"ACHIEVED":"NOT_ACHIEVED"):(percent>=100?"ACHIEVED":percent>=80?"AT_RISK":"NOT_ACHIEVED");return{percent:Math.round(percent*100)/100,status};}

@@ -1,0 +1,5 @@
+import { and, desc, eq } from "drizzle-orm";
+import { requireDb } from "@/src/db";
+import { approvals, publications } from "@/src/db/schema";
+export async function hasApprovedDecision(subjectType:string,subjectId:number){const db=requireDb();const rows=await db.select().from(approvals).where(and(eq(approvals.subjectType,subjectType),eq(approvals.subjectId,subjectId),eq(approvals.decision,"APPROVED"))).orderBy(desc(approvals.decidedAt)).limit(1);return rows[0]??null;}
+export async function publishApproved(input:{subjectType:string;subjectId:number;publicTitle?:string;publicSummary?:string;publishedBy:number}){const approval=await hasApprovedDecision(input.subjectType,input.subjectId);if(!approval)throw new Error("Objek belum mempunyai approval yang sah.");const db=requireDb();const result=await db.insert(publications).values({subjectType:input.subjectType,subjectId:input.subjectId,visibility:"PUBLIC",publicTitle:input.publicTitle,publicSummary:input.publicSummary,approvedBy:approval.approverId,publishedBy:input.publishedBy,publishedAt:new Date(),publicationStart:new Date(),status:"PUBLISHED"});return Number(result[0].insertId);}
