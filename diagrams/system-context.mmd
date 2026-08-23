@@ -1,0 +1,27 @@
+flowchart LR
+    PUBLIC[Pengunjung Publik]
+    ADMIN[Admin]
+    KAPRODI[Kaprodi]
+    GKM[GKM]
+    SEKJUR[Sekjur]
+    KAJUR[Kajur]
+
+    subgraph SYSTEM[Integrated UPPS Governance System]
+      PUBLICPORTAL[Public Portal]
+      WORKSPACE[Internal Workspace]
+      CORE[Governance Core]
+      DB[(Single Source of Truth)]
+      STORAGE[(Evidence Storage)]
+    end
+
+    PUBLIC --> PUBLICPORTAL
+    ADMIN --> WORKSPACE
+    KAPRODI --> WORKSPACE
+    GKM --> WORKSPACE
+    SEKJUR --> WORKSPACE
+    KAJUR --> WORKSPACE
+
+    PUBLICPORTAL --> CORE
+    WORKSPACE --> CORE
+    CORE --> DB
+    CORE --> STORAGE
