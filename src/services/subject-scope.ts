@@ -5,7 +5,7 @@ import { newsArticles } from "@/src/db/schema-admin";
 import { cpl,cpmk,courses,curricula,curriculumCourses } from "@/src/db/schema-phase5";
 import type { SessionUser } from "@/src/lib/auth";
 import { scopeAllows } from "@/src/lib/rbac";
-import { getGovernanceScope } from "@/src/services/governance-scope";
+import { getGovernanceScope,governanceWriteAllows } from "@/src/services/governance-scope";
 
 export type SubjectScope={organizationId:number;studyProgramId:number|null};
 async function programScope(studyProgramId:number):Promise<SubjectScope|null>{const db=requireDb();const[p]=await db.select({organizationId:studyPrograms.organizationId}).from(studyPrograms).where(eq(studyPrograms.id,studyProgramId)).limit(1);return p?{organizationId:p.organizationId,studyProgramId}:null;}
@@ -24,3 +24,4 @@ export async function resolveSubjectScope(subjectType:string,subjectId:number,de
  return null;
 }
 export async function subjectScopeAllows(user:SessionUser,subjectType:string,subjectId:number){const scope=await resolveSubjectScope(subjectType,subjectId);return !!scope&&scopeAllows(user,scope.organizationId,scope.studyProgramId);}
+export async function subjectWriteScopeAllows(user:SessionUser,subjectType:string,subjectId:number){const scope=await resolveSubjectScope(subjectType,subjectId);return !!scope&&governanceWriteAllows(user,scope.organizationId,scope.studyProgramId);}
