@@ -1,6 +1,6 @@
 # Publikasi dan System Evaluasi Jurusan
 
-Integrated governance, evaluation, academic/OBE, resources, and public transparency system untuk Jurusan/UPPS.
+Integrated governance, evaluation, academic/OBE, resources, accreditation registry, and public transparency system untuk Jurusan/UPPS.
 
 ## Prinsip Utama
 
@@ -10,7 +10,7 @@ Portal publik **bukan sistem data kedua**. Portal publik adalah read-only projec
 
 ## Arsitektur Konseptual — Klaster LAM Teknik
 
-Arsitektur operasional dikelompokkan dalam tiga klaster **INPUT → PROCESS → OUTPUT/OUTCOME** agar mudah disandingkan dengan LED, LKPS, matriks penilaian, dan borang akreditasi LAM Teknik. Pengelompokan ini adalah **accreditation view** atas data yang sama, bukan database baru.
+Arsitektur operasional dikelompokkan dalam tiga klaster **INPUT → PROCESS → OUTPUT/OUTCOME** agar mudah disandingkan dengan LED, LKPS, matriks penilaian, dan borang akreditasi. Pengelompokan ini adalah **accreditation view** atas data yang sama, bukan database baru.
 
 ```mermaid
 flowchart LR
@@ -50,7 +50,7 @@ flowchart LR
     I --> A[Accreditation Mapping]
     P --> A
     O --> A
-    A --> B[7 Kriteria LAM Teknik]
+    A --> B[Framework / Kriteria / Indikator]
     A --> C[LED / LKPS / Evidence Readiness]
 
     O --> D[Publication Layer]
@@ -63,9 +63,12 @@ flowchart LR
 - **PROCESS/Proses** = pelaksanaan tridharma, tata kelola, pengukuran, SPMI, evaluasi, tindak lanjut, serta pengendalian.
 - **OUTPUT/OUTCOME** = capaian kinerja, CPL/lulusan, luaran tridharma, hasil kerja sama, efektivitas peningkatan mutu, dan informasi yang dapat dipertanggungjawabkan.
 - Satu domain dapat berkontribusi pada lebih dari satu klaster. Contoh laboratorium: **equipment = input**, **utilization/maintenance/K3L = process**, **utilization/safety performance = output**.
-- Tujuh kriteria LAM Teknik tetap menjadi dimensi penilaian. IPO adalah pengelompokan elemen mutu untuk memudahkan crosswalk, bukan pengganti kriteria.
+- Kriteria dan indikator tetap mengikuti framework/instrumen lembaga akreditasi yang dipilih. IPO adalah view lintas-framework, bukan pengganti struktur resmi masing-masing LAM/BAN-PT.
 
-Lihat `docs/15-lam-teknik-ipo-crosswalk.md` untuk matriks penyandingan domain sistem dengan klaster IPO dan tujuh kriteria LAM Teknik.
+Lihat:
+
+- `docs/15-lam-teknik-ipo-crosswalk.md`
+- `docs/16-dynamic-accreditation-framework-registry.md`
 
 ## Scope
 
@@ -100,7 +103,7 @@ Domain di atas tetap menjadi struktur data/aplikasi. **INPUT–PROCESS–OUTPUT/
 
 ## Role Baseline
 
-- **Admin Sistem** — konfigurasi, organisasi/Prodi, user, role, master teknis.
+- **Admin Sistem** — konfigurasi, organisasi/Prodi, user, role, master teknis, registry framework akreditasi.
 - **Admin Data** — input data/konten/evidence dan eksekusi publish setelah approval.
 - **Kaprodi** — data, Renstra/KPI, kurikulum dan tindak lanjut dalam scope Prodi.
 - **GKM** — verifikasi mutu, evaluasi, temuan, rekomendasi.
@@ -113,33 +116,83 @@ Role bersifat dinamis di database, sementara capability keamanan tetap dikontrol
 
 ## Status Implementasi
 
-### Phase 1–4
+### Phase 1–4 — MVP DONE
 
-Implemented: authentication/dynamic RBAC, organisasi/Prodi, audit/versioning/evidence, VMTS/Renstra, KPI target–realisasi, generic Evaluation Engine, finding/recommendation/follow-up, verification, approval, publication layer, berita, public KPI/evaluation/statement dashboard.
+Authentication/dynamic RBAC, organisasi/Prodi, audit/versioning/evidence, VMTS/Renstra, KPI target–realisasi, generic Evaluation Engine, finding/recommendation/follow-up, verification, approval, publication layer, berita, public KPI/evaluation/statement dashboard.
 
-### Phase 5 — Academic & OBE
+### Phase 5 — Academic & OBE — VERTICAL SLICE
 
-Vertical slice awal sudah tersedia dan akan disempurnakan kembali setelah seluruh sistem berjalan, terutama struktur kurikulum/OBE dan integrasi sumber OBE lama.
+Vertical slice awal tersedia. Struktur kurikulum/OBE akan disempurnakan kembali setelah seluruh domain utama berjalan.
 
-### Phase 6 — Resources and Extended Domains
+### Phase 6 — Resources and Extended Domains — LOCAL SIMULATION READY
 
-Sedang divalidasi pada branch `phase6-resources`: laboratorium lintas Prodi, equipment, utilization, maintenance, K3L, SDM, penelitian, PkM, mahasiswa/lulusan, dan kerja sama.
+Sudah tersedia di `main`:
+
+- laboratorium lintas Prodi;
+- equipment;
+- utilization;
+- maintenance;
+- K3L;
+- SDM/personnel;
+- penelitian;
+- PkM;
+- mahasiswa/lulusan;
+- kerja sama;
+- public projection dan `/internal/resources`.
+
+### Dynamic Accreditation Registry — FOUNDATION AVAILABLE
+
+Registry mendukung:
+
+```text
+Program Studi
+→ Accreditation Agency
+→ Framework / Instrument Version
+→ Criteria
+→ Cluster(s)
+→ Indicators
+→ Evidence Requirements
+→ Source Mapping
+```
+
+Seed awal menggunakan LAM Teknik 2025 reference structure sebagai model awal. Assignment framework ke Prodi bersifat eksplisit dan tidak otomatis.
 
 ## Separation of Duties & Scope Security
 
-Permission saja tidak cukup untuk tindakan formal. Evaluation, approval, publication, follow-up, dan verification juga memeriksa scope objek. User yang hanya mempunyai scope Prodi A tidak dapat memproses objek Prodi B atau objek UPPS tanpa UPPS write scope.
+Permission saja tidak cukup untuk tindakan formal. Evaluation, approval, publication, follow-up, verification, dan assignment akreditasi juga memeriksa scope objek/Program Studi.
 
-## Database Update
+## Quick Local Simulation
+
+Prasyarat: Node.js 22.13+ dan MySQL 8.x.
 
 ```bash
-npm run db:push
-npm run db:seed
-npm run db:backfill-scopes
+npm install
+npm run setup:local
+npm run dev
+```
+
+`setup:local` menjalankan:
+
+```text
+db:push
+→ db:seed
+→ db:backfill-scopes
+→ bootstrap:admin
+```
+
+Sebelum itu buat `.env.local` dari `.env.example` dan sesuaikan `DATABASE_URL`, `AUTH_SECRET`, serta akun bootstrap admin.
+
+Panduan lengkap: `docs/17-local-simulation.md`.
+
+Validation command:
+
+```bash
+npm run check
 ```
 
 ## Roadmap Berikutnya
 
-- **Phase 6 — Resources and Extended Domains:** penyelesaian dan validasi runtime.
-- **Phase 7 — Accreditation & Compliance:** configurable BAN-PT/LAM/standar lain sebagai mapping/consumer dari data Phase 1–6, termasuk crosswalk IPO dan 7 kriteria LAM Teknik.
+- **Phase 5 refinement:** perbaikan struktur kurikulum/OBE setelah keseluruhan sistem berjalan.
+- **Phase 7 — Accreditation & Compliance:** indicator-to-source mapping, evidence readiness, self-assessment, gap analysis, improvement action, official accreditation status, dan borang/LED/LKPS views.
 - **Phase 8 — Analytics:** trend, early warning, KPI/OBE/lab/accreditation readiness.
 - **Phase 9 — Integration:** integrasi/migrasi dengan website Jurusan yang telah ada.
