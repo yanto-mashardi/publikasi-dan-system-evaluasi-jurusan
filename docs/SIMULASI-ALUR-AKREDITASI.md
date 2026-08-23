@@ -8,6 +8,9 @@ Dokumen ini menjelaskan pembagian ruang kerja. Semua akun di bawah hanya untuk s
 | Admin Jurusan | `admin.jurusan@local.test` | `AdminJurusan123!` | Mengisi data dan evidence, menyimpan draf, menghitung indikator, menulis analisis/evaluasi/catatan LED, lalu mengajukan evaluasi. |
 | Kaprodi D3 Nautika | `kaprodi.nautika@local.test` | `Kaprodi123!` | Mengisi dan menyetujui evaluasi hanya dalam scope D3 Nautika. |
 | Kajur/UPPS | `kajur.kemaritiman@local.test` | `Kajur123!` | Menyetujui pada lingkup UPPS dan memublikasikan record yang sudah disetujui serta ditandai kandidat publik. |
+| Gugus Kendali Mutu | `gkm.kemaritiman@local.test` | `GkmMutu123!` | Memeriksa mutu, evidence, temuan, dan rekomendasi tanpa mengambil alih persetujuan akhir Kajur. |
+| Sekretaris Jurusan | `sekjur.kemaritiman@local.test` | `Sekjur123!` | Mengoordinasikan workflow, verifikasi tindak lanjut, dan review publikasi. |
+| Viewer Internal | `viewer.kemaritiman@local.test` | `Viewer123!` | Membaca data internal sesuai scope tanpa hak mengubah. |
 
 Password simulasi dibuat oleh script bootstrap dan dapat diganti melalui Super Admin. Jangan gunakan password simulasi di server produksi.
 

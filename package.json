@@ -16,6 +16,7 @@
     "db:seed":"tsx scripts/seed-foundation.ts && tsx scripts/seed-accreditation.ts",
     "db:seed:demo":"tsx scripts/seed-demo.ts",
     "db:seed:accreditation":"tsx scripts/seed-accreditation.ts",
+    "db:audit":"tsx scripts/audit-database.ts",
     "db:backfill-scopes":"tsx scripts/backfill-governance-scopes.ts",
     "setup:local":"npm run db:push && npm run db:seed && npm run db:backfill-scopes && npm run bootstrap:admin && npm run bootstrap:department-admin && npm run bootstrap:demo-workflow-users && npm run db:seed:demo"
   },

@@ -1,4 +1,4 @@
-import { bigint, boolean, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { bigint, boolean, json, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 const id=(name="id")=>bigint(name,{mode:"number"}).autoincrement().primaryKey();
 
@@ -8,6 +8,23 @@ export const roleSettings=mysqlTable("role_settings",{
   isSystemRole:boolean("is_system_role").notNull().default(false),
   updatedAt:timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const federatedApplications=mysqlTable("federated_applications",{
+  id:id(),
+  code:varchar("code",{length:80}).notNull(),
+  name:varchar("name",{length:255}).notNull(),
+  baseUrl:varchar("base_url",{length:700}).notNull(),
+  organizationCode:varchar("organization_code",{length:80}),
+  encryptedAccessToken:text("encrypted_access_token"),
+  connectionStatus:varchar("connection_status",{length:30}).notNull().default("NOT_CHECKED"),
+  lastHealthAt:timestamp("last_health_at"),
+  lastSyncAt:timestamp("last_sync_at"),
+  lastError:text("last_error"),
+  summarySnapshot:json("summary_snapshot"),
+  status:varchar("status",{length:30}).notNull().default("ACTIVE"),
+  createdAt:timestamp("created_at").defaultNow().notNull(),
+  updatedAt:timestamp("updated_at").defaultNow().notNull(),
+},t=>[uniqueIndex("federated_application_code_uq").on(t.code),uniqueIndex("federated_application_url_uq").on(t.baseUrl)]);
 
 export const newsCategories=mysqlTable("news_categories",{
   id:id(),
