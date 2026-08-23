@@ -14,19 +14,20 @@
 | Menjalankan tindak lanjut |  | scope | ✓ |  | ✓ |  |
 | Verifikasi efektivitas |  |  |  | ✓ | ✓ | ✓ |
 | Approval tingkat UPPS |  |  |  |  |  | ✓ |
-| Menandai publishable |  | scope |  | ✓ | ✓ | ✓ |
-| Publish |  | ✓ |  |  | ✓ | ✓ |
+| Merekomendasikan layak publik |  |  |  | ✓ | ✓ | ✓ |
+| Approval publikasi |  |  |  |  | review | ✓ |
+| Eksekusi publish setelah approval |  | ✓ |  |  | ✓ | ✓ |
 | Lihat audit log | ✓ |  |  | ✓ | ✓ | ✓ |
 
 ## Separation of Duties
 
-Sistem harus dapat mencegah pola:
+Sistem harus mencegah pola berikut untuk objek yang membutuhkan pengendalian mutu formal:
 
 ```text
 Inputter = Evaluator = Approver
 ```
 
-untuk objek yang membutuhkan pengendalian mutu formal.
+Admin Data boleh menyiapkan metadata publik dan menjalankan aksi publish, tetapi **tidak menentukan sendiri bahwa sebuah objek layak dipublikasikan**. Publication endpoint wajib memeriksa adanya keputusan approval yang sah.
 
 ## Scope
 

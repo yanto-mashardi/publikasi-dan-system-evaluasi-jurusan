@@ -4,7 +4,7 @@ roles:
       - system.configure
       - users.manage
       - roles.manage
-      - master_data.manage
+      - master.manage
       - audit.read
 
   admin_data:
@@ -33,6 +33,7 @@ roles:
       - finding.create
       - recommendation.create
       - followup.verify
+      - publication.recommend
 
   sekjur:
     scope: upps
@@ -40,6 +41,7 @@ roles:
       - data.verify
       - workflow.coordinate
       - publication.review
+      - followup.verify
 
   kajur:
     scope: upps
