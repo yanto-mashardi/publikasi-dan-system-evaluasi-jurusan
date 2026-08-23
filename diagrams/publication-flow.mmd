@@ -1,0 +1,11 @@
+stateDiagram-v2
+    [*] --> Draft
+    Draft --> Submitted
+    Submitted --> Verified
+    Verified --> Evaluated
+    Evaluated --> Approved
+    Approved --> Effective
+    Effective --> Published: visibility=PUBLIC
+    Effective --> InternalOnly: visibility=INTERNAL
+    Published --> Archived
+    InternalOnly --> Archived
