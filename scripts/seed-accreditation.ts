@@ -57,4 +57,4 @@ async function main(){
   console.log("Accreditation seed selesai: LAM Teknik 2025 reference structure.");
 }
 
-main().catch(e=>{console.error(e);process.exit(1)});
+main().then(()=>process.exit(0)).catch(e=>{console.error(e);process.exit(1)});
