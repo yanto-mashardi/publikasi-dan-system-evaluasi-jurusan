@@ -1,6 +1,6 @@
 import { and,eq } from "drizzle-orm";
 import { requireDb } from "../src/db";
-import { accreditationAgencies,accreditationClusters,accreditationCriteria,accreditationEvidenceRequirements,accreditationFrameworks,accreditationIndicatorClusters,accreditationIndicators } from "../src/db/schema-accreditation";
+import { accreditationAgencies,accreditationClusters,accreditationCriteria,accreditationEvidenceRequirements,accreditationFrameworks,accreditationIndicatorClusters,accreditationIndicators,accreditationIndicatorVariables,accreditationScoringRubrics } from "../src/db/schema-accreditation";
 
 const LAM_TEKNIK_SOURCE="https://lamteknik.or.id/akreditasi/instrumen-akreditasi";
 const LAM_TEKNIK_REGULATION="Peraturan LAM Teknik Nomor 6 Tahun 2025";
@@ -71,6 +71,21 @@ async function main(){
   for(const c of CRITERIA){const[found]=await db.select().from(accreditationCriteria).where(and(eq(accreditationCriteria.frameworkId,demo.id),eq(accreditationCriteria.code,c.code))).limit(1);if(!found)await db.insert(accreditationCriteria).values({frameworkId:demo.id,...c,status:"ACTIVE"});}
   const demoCriteria=await db.select().from(accreditationCriteria).where(eq(accreditationCriteria.frameworkId,demo.id));const demoClusters=await db.select().from(accreditationClusters).where(eq(accreditationClusters.frameworkId,demo.id));
   for(const item of DEMO_INDICATORS){let[indicator]=await db.select().from(accreditationIndicators).where(and(eq(accreditationIndicators.frameworkId,demo.id),eq(accreditationIndicators.code,item.code))).limit(1);if(!indicator){const criterion=demoCriteria.find(row=>row.code===item.criterion)!;const x=await db.insert(accreditationIndicators).values({frameworkId:demo.id,criterionId:criterion.id,code:item.code,name:`CONTOH - ${item.name}`,description:"Indikator demonstrasi untuk menguji alur aplikasi; bukan rumusan resmi LAM Teknik.",sequence:1,status:"ACTIVE"});[indicator]=await db.select().from(accreditationIndicators).where(eq(accreditationIndicators.id,Number(x[0].insertId))).limit(1);}const cluster=demoClusters.find(row=>row.code===item.cluster)!;await db.insert(accreditationIndicatorClusters).values({indicatorId:indicator.id,clusterId:cluster.id,isPrimary:true}).onDuplicateKeyUpdate({set:{isPrimary:true}});const[requirement]=await db.select().from(accreditationEvidenceRequirements).where(and(eq(accreditationEvidenceRequirements.indicatorId,indicator.id),eq(accreditationEvidenceRequirements.code,`${item.code}-EV`))).limit(1);if(!requirement)await db.insert(accreditationEvidenceRequirements).values({indicatorId:indicator.id,code:`${item.code}-EV`,description:`CONTOH - Data/evidence sumber untuk ${item.name}.`,required:true,acceptableSubjectTypes:item.subjectTypes,status:"ACTIVE"});}
+  const demoIndicators=await db.select().from(accreditationIndicators).where(eq(accreditationIndicators.frameworkId,demo.id));
+  for(const indicator of demoIndicators){
+    await db.update(accreditationIndicators).set({unit:"%",weight:"1",scoringRule:{method:"FORMULA",expression:{op:"PERCENT",args:[{variable:"JUMLAH_TERCAPAI"},{variable:"JUMLAH_TOTAL"}]},precision:2}}).where(eq(accreditationIndicators.id,indicator.id));
+    for(const variable of [{code:"JUMLAH_TERCAPAI",label:"Jumlah butir/data yang memenuhi",sequence:1},{code:"JUMLAH_TOTAL",label:"Jumlah seluruh butir/data yang dinilai",sequence:2}]){
+      const[found]=await db.select().from(accreditationIndicatorVariables).where(and(eq(accreditationIndicatorVariables.indicatorId,indicator.id),eq(accreditationIndicatorVariables.code,variable.code))).limit(1);
+      if(!found)await db.insert(accreditationIndicatorVariables).values({indicatorId:indicator.id,...variable,valueType:"NUMBER",unit:"butir",required:true,status:"ACTIVE"});
+    }
+    const existingRubrics=await db.select().from(accreditationScoringRubrics).where(eq(accreditationScoringRubrics.indicatorId,indicator.id));
+    if(!existingRubrics.length)await db.insert(accreditationScoringRubrics).values([
+      {indicatorId:indicator.id,score:"4",label:"Sangat baik",description:"Data simulasi: capaian minimal 90%.",conditionRule:{variable:"$RESULT",operator:"GTE",value:90},sequence:1,status:"ACTIVE"},
+      {indicatorId:indicator.id,score:"3",label:"Baik",description:"Data simulasi: capaian 75% sampai di bawah 90%.",conditionRule:{variable:"$RESULT",operator:"BETWEEN",values:[75,89.9999]},sequence:2,status:"ACTIVE"},
+      {indicatorId:indicator.id,score:"2",label:"Cukup",description:"Data simulasi: capaian 50% sampai di bawah 75%.",conditionRule:{variable:"$RESULT",operator:"BETWEEN",values:[50,74.9999]},sequence:3,status:"ACTIVE"},
+      {indicatorId:indicator.id,score:"1",label:"Kurang",description:"Data simulasi: capaian di bawah 50%.",conditionRule:{variable:"$RESULT",operator:"LT",value:50},sequence:4,status:"ACTIVE"},
+    ]);
+  }
   if(demo.lifecycleStatus!=="ACTIVE")await db.update(accreditationFrameworks).set({lifecycleStatus:"ACTIVE",effectiveFrom:"2026-01-01",updatedAt:new Date()}).where(eq(accreditationFrameworks.id,demo.id));
   console.log("Accreditation seed selesai: LAM Teknik 2025 reference structure.");
 }

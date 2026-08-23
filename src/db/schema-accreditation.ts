@@ -70,6 +70,36 @@ export const accreditationIndicators=mysqlTable("accreditation_indicators",{
   updatedAt:timestamp("updated_at").defaultNow().notNull(),
 },t=>[uniqueIndex("accreditation_indicator_framework_code_uq").on(t.frameworkId,t.code)]);
 
+export const accreditationIndicatorVariables=mysqlTable("accreditation_indicator_variables",{
+  id:id(),
+  indicatorId:bigint("indicator_id",{mode:"number"}).notNull(),
+  code:varchar("code",{length:100}).notNull(),
+  label:varchar("label",{length:500}).notNull(),
+  valueType:varchar("value_type",{length:30}).notNull().default("NUMBER"),
+  unit:varchar("unit",{length:80}),
+  required:boolean("required").notNull().default(true),
+  sourceSubjectType:varchar("source_subject_type",{length:120}),
+  sourceField:varchar("source_field",{length:255}),
+  defaultValue:varchar("default_value",{length:255}),
+  sequence:int("sequence").notNull().default(1),
+  status:varchar("status",{length:30}).notNull().default("ACTIVE"),
+  createdAt:timestamp("created_at").defaultNow().notNull(),
+  updatedAt:timestamp("updated_at").defaultNow().notNull(),
+},t=>[uniqueIndex("accreditation_variable_indicator_code_uq").on(t.indicatorId,t.code)]);
+
+export const accreditationScoringRubrics=mysqlTable("accreditation_scoring_rubrics",{
+  id:id(),
+  indicatorId:bigint("indicator_id",{mode:"number"}).notNull(),
+  score:decimal("score",{precision:10,scale:4}).notNull(),
+  label:varchar("label",{length:255}).notNull(),
+  description:text("description"),
+  conditionRule:json("condition_rule"),
+  sequence:int("sequence").notNull().default(1),
+  status:varchar("status",{length:30}).notNull().default("ACTIVE"),
+  createdAt:timestamp("created_at").defaultNow().notNull(),
+  updatedAt:timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const accreditationIndicatorClusters=mysqlTable("accreditation_indicator_clusters",{
   indicatorId:bigint("indicator_id",{mode:"number"}).notNull(),
   clusterId:bigint("cluster_id",{mode:"number"}).notNull(),
@@ -119,6 +149,10 @@ export const accreditationAssessments=mysqlTable("accreditation_assessments",{
   readinessStatus:varchar("readiness_status",{length:30}).notNull().default("NOT_ASSESSED"),
   actualValue:varchar("actual_value",{length:255}),
   calculatedValue:varchar("calculated_value",{length:255}),
+  calculatedScore:decimal("calculated_score",{precision:10,scale:4}),
+  weightedScore:decimal("weighted_score",{precision:14,scale:4}),
+  matchedRubricId:bigint("matched_rubric_id",{mode:"number"}),
+  calculationSnapshot:json("calculation_snapshot"),
   calculationNote:text("calculation_note"),
   analysis:text("analysis"),
   evaluationNote:text("evaluation_note"),
@@ -130,6 +164,18 @@ export const accreditationAssessments=mysqlTable("accreditation_assessments",{
   createdAt:timestamp("created_at").defaultNow().notNull(),
   updatedAt:timestamp("updated_at").defaultNow().notNull(),
 },t=>[uniqueIndex("accreditation_assessment_period_uq").on(t.assignmentId,t.indicatorId,t.period)]);
+
+export const accreditationAssessmentValues=mysqlTable("accreditation_assessment_values",{
+  id:id(),
+  assessmentId:bigint("assessment_id",{mode:"number"}).notNull(),
+  variableId:bigint("variable_id",{mode:"number"}).notNull(),
+  rawValue:text("raw_value"),
+  numericValue:decimal("numeric_value",{precision:20,scale:6}),
+  booleanValue:boolean("boolean_value"),
+  recordedBy:bigint("recorded_by",{mode:"number"}).notNull(),
+  createdAt:timestamp("created_at").defaultNow().notNull(),
+  updatedAt:timestamp("updated_at").defaultNow().notNull(),
+},t=>[uniqueIndex("accreditation_assessment_variable_uq").on(t.assessmentId,t.variableId)]);
 
 export const accreditationAssessmentSources=mysqlTable("accreditation_assessment_sources",{
   id:id(),

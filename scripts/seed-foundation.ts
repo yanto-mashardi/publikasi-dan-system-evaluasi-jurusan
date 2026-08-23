@@ -6,7 +6,7 @@ import { roleSettings } from "../src/db/schema-admin";
 const ROLE_NAMES:Record<string,string>={ADMIN_SYSTEM:"Admin Sistem",ADMIN_DATA:"Admin Jurusan",KAPRODI:"Kaprodi",GKM:"GKM",SEKJUR:"Sekjur",KAJUR:"Kajur",VIEWER_INTERNAL:"Viewer Internal"};
 const PERMISSIONS=["system.configure","users.manage","roles.manage","master.manage","audit.read","data.create","data.update","evidence.upload","publication.execute","news.manage","program.read","program.update","curriculum.manage","kpi.measure","followup.execute","quality.read","evidence.verify","evaluation.create","finding.create","recommendation.create","followup.verify","publication.recommend","data.verify","workflow.coordinate","publication.review","approval.final","evaluation.approve","publication.approve","report.approve","internal.read","resources.read","resources.manage","resources.contribute","accreditation.read","accreditation.framework.manage","accreditation.assign","accreditation.assess","accreditation.approve","accreditation.publish"];
 const ROLE_GRANTS:Record<string,string[]>={
- ADMIN_SYSTEM:PERMISSIONS,
+ ADMIN_SYSTEM:["system.configure","users.manage","roles.manage","master.manage","audit.read","internal.read","program.read","resources.read","quality.read","accreditation.read","accreditation.framework.manage","accreditation.assign"],
  ADMIN_DATA:["data.create","data.update","evidence.upload","news.manage","program.read","program.update","curriculum.manage","kpi.measure","evaluation.create","finding.create","recommendation.create","followup.execute","internal.read","resources.read","resources.manage","resources.contribute","accreditation.read","accreditation.assess"],
  KAPRODI:["data.create","data.update","program.read","program.update","curriculum.manage","kpi.measure","evidence.upload","evaluation.create","finding.create","recommendation.create","followup.execute","approval.final","evaluation.approve","internal.read","resources.read","resources.contribute","accreditation.read","accreditation.assess","accreditation.approve"],
  GKM:["quality.read","evidence.verify","evaluation.create","finding.create","recommendation.create","followup.verify","publication.recommend","internal.read","resources.read","accreditation.read","accreditation.assess"],
@@ -25,7 +25,8 @@ const POLICIES=[
  {subjectType:"COMMUNITY_SERVICE_PROJECT",requiredLifecycleStatus:"APPROVED",allowedFields:["studyProgram","title","year","partner","fundingSource","outputSummary","projectStatus"]},
  {subjectType:"STUDENT_ANNUAL_STAT",requiredLifecycleStatus:"APPROVED",allowedFields:["studyProgram","academicYear","activeStudents","newStudents","graduates","dropoutStudents"]},
  {subjectType:"GRADUATE_OUTCOME_STAT",requiredLifecycleStatus:"APPROVED",allowedFields:["studyProgram","graduationYear","graduates","trackedGraduates","employed","entrepreneurship","furtherStudy","averageWaitingMonths","relevantEmploymentPercent"]},
- {subjectType:"COOPERATION",requiredLifecycleStatus:"APPROVED",allowedFields:["studyProgram","partnerName","partnerType","scope","startDate","endDate","implementationSummary","cooperationStatus"]}
+ {subjectType:"COOPERATION",requiredLifecycleStatus:"APPROVED",allowedFields:["studyProgram","partnerName","partnerType","scope","startDate","endDate","implementationSummary","cooperationStatus"]},
+ {subjectType:"ACCREDITATION_ASSESSMENT",requiredLifecycleStatus:"APPROVED",allowedFields:["agencyName","frameworkName","organizationName","programName","period","criterionCode","indicatorCode","indicatorName","readinessStatus","calculatedValue","analysis"]}
 ];
 
 async function main(){

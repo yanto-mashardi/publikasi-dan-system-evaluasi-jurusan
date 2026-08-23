@@ -12,11 +12,12 @@
     "db:push":"drizzle-kit push",
     "bootstrap:admin":"tsx scripts/bootstrap-admin.ts",
     "bootstrap:department-admin":"tsx scripts/bootstrap-department-admin.ts",
+    "bootstrap:demo-workflow-users":"tsx scripts/bootstrap-demo-workflow-users.ts",
     "db:seed":"tsx scripts/seed-foundation.ts && tsx scripts/seed-accreditation.ts",
     "db:seed:demo":"tsx scripts/seed-demo.ts",
     "db:seed:accreditation":"tsx scripts/seed-accreditation.ts",
     "db:backfill-scopes":"tsx scripts/backfill-governance-scopes.ts",
-    "setup:local":"npm run db:push && npm run db:seed && npm run db:backfill-scopes && npm run bootstrap:admin && npm run bootstrap:department-admin && npm run db:seed:demo"
+    "setup:local":"npm run db:push && npm run db:seed && npm run db:backfill-scopes && npm run bootstrap:admin && npm run bootstrap:department-admin && npm run bootstrap:demo-workflow-users && npm run db:seed:demo"
   },
   "dependencies": {"bcryptjs":"^3.0.2","drizzle-orm":"0.45.2","jose":"^6.1.0","mysql2":"^3.23.3","next":"^16.2.6","react":"19.2.6","react-dom":"19.2.6","zod":"^4.1.12"},
   "devDependencies": {"@types/node":"22.19.19","@types/react":"19.2.14","@types/react-dom":"19.2.3","drizzle-kit":"0.31.10","tsx":"^4.20.6","typescript":"5.9.3"}

@@ -11,7 +11,10 @@ type Structure={
   evidenceRequirements:Row[];
 };
 
+type Scoring={variables:Row[];rubrics:Row[]};
+
 const emptyStructure:Structure={clusters:[],criteria:[],indicators:[],evidenceRequirements:[]};
+const emptyScoring:Scoring={variables:[],rubrics:[]};
 
 export default function AccreditationConsole({permissions}:{permissions:string[]}){
   const has=(permission:string)=>permissions.includes(permission);
@@ -23,6 +26,8 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
   const[assignments,setAssignments]=useState<Row[]>([]);
   const[frameworkId,setFrameworkId]=useState(0);
   const[structure,setStructure]=useState<Structure>(emptyStructure);
+  const[scoring,setScoring]=useState<Scoring>(emptyScoring);
+  const[indicatorId,setIndicatorId]=useState(0);
   const[message,setMessage]=useState("");
 
   async function request(url:string,method="GET",body?:unknown){
@@ -48,8 +53,8 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
   }
 
   async function loadStructure(id:number){
-    if(!id){setStructure(emptyStructure);return;}
-    try{setStructure(await request(`/api/internal/accreditation/structure?frameworkId=${id}`));}
+    if(!id){setStructure(emptyStructure);setScoring(emptyScoring);return;}
+    try{const[structureRows,scoringRows]=await Promise.all([request(`/api/internal/accreditation/structure?frameworkId=${id}`),request(`/api/internal/accreditation/scoring?frameworkId=${id}`)]);setStructure(structureRows);setScoring(scoringRows);}
     catch(error){setMessage(error instanceof Error?error.message:"Gagal memuat struktur");}
   }
 
@@ -74,7 +79,7 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
     <section className="grid">
       <div className="card">
         <h2>Lembaga Akreditasi</h2>
-        {agencies.map(agency=><p key={agency.id}><b>{agency.code}</b> — {agency.name} <span className="badge">{agency.status}</span></p>)}
+        {agencies.map(agency=><p className="registry-row" key={agency.id}><span><b>{agency.code}</b> — {agency.name} <span className="badge">{agency.status}</span></span>{manage&&agency.status==="ACTIVE"&&<button type="button" onClick={()=>void act(()=>request(`/api/internal/accreditation/agencies?id=${agency.id}`,"DELETE"))}>Arsipkan</button>}</p>)}
         {manage&&<form className="form" onSubmit={event=>{event.preventDefault();const data=formData(event);void act(()=>request("/api/internal/accreditation/agencies","POST",{code:String(data.get("code")),name:String(data.get("name")),agencyType:String(data.get("type")||"LAM"),websiteUrl:String(data.get("website")||"")||undefined}));}}>
           <h3>Tambah Lembaga</h3>
           <input name="code" placeholder="LAM_INFOKOM" required/>
@@ -118,7 +123,7 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
       <section className="grid">
         <div className="card">
           <h2>Klaster</h2>
-          {structure.clusters.slice().sort((a,b)=>a.sequence-b.sequence).map(row=><p key={row.id}><b>{row.code}</b> — {row.name} <span className="badge">{row.semanticGroup??"CUSTOM"}</span></p>)}
+          {structure.clusters.slice().sort((a,b)=>a.sequence-b.sequence).map(row=><p className="registry-row" key={row.id}><span><b>{row.code}</b> — {row.name} <span className="badge">{row.semanticGroup??"CUSTOM"}</span></span>{manage&&selected?.lifecycleStatus==="DRAFT"&&row.status==="ACTIVE"&&<button type="button" onClick={()=>void act(()=>request("/api/internal/accreditation/structure","PATCH",{entity:"CLUSTER",id:row.id,status:"ARCHIVED"}))}>Arsipkan</button>}</p>)}
           {manage&&selected?.lifecycleStatus==="DRAFT"&&<form className="form" onSubmit={event=>{event.preventDefault();const data=formData(event);void act(()=>request("/api/internal/accreditation/structure","POST",{entity:"CLUSTER",frameworkId,code:String(data.get("code")),name:String(data.get("name")),semanticGroup:String(data.get("semanticGroup")||"")||undefined,sequence:Number(data.get("sequence"))||1}));}}>
             <input name="code" placeholder="INPUT" required/>
             <input name="name" placeholder="Nama klaster" required/>
@@ -130,7 +135,7 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
 
         <div className="card">
           <h2>Kriteria</h2>
-          {structure.criteria.slice().sort((a,b)=>a.sequence-b.sequence).map(row=><p key={row.id}><b>{row.code}</b> — {row.name}</p>)}
+          {structure.criteria.slice().sort((a,b)=>a.sequence-b.sequence).map(row=><p className="registry-row" key={row.id}><span><b>{row.code}</b> — {row.name}</span>{manage&&selected?.lifecycleStatus==="DRAFT"&&row.status==="ACTIVE"&&<button type="button" onClick={()=>void act(()=>request("/api/internal/accreditation/structure","PATCH",{entity:"CRITERION",id:row.id,status:"ARCHIVED"}))}>Arsipkan</button>}</p>)}
           {manage&&selected?.lifecycleStatus==="DRAFT"&&<form className="form" onSubmit={event=>{event.preventDefault();const data=formData(event);void act(()=>request("/api/internal/accreditation/structure","POST",{entity:"CRITERION",frameworkId,code:String(data.get("code")),name:String(data.get("name")),sequence:Number(data.get("sequence"))||1}));}}>
             <input name="code" placeholder="K1" required/>
             <input name="name" placeholder="Nama kriteria" required/>
@@ -140,9 +145,17 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
         </div>
       </section>
 
+      <section className="card scoring-builder">
+        <div className="registry-heading"><div><span className="eyebrow">Mesin evaluasi</span><h2>Variabel, Rumus, dan Rubrik</h2><p className="muted">Pilih indikator di atas. Variabel menjadi kolom isian admin; rumus menghitung hasil; rubrik mengubah hasil menjadi skor. Semua konfigurasi tersimpan sebagai data.</p></div><select value={indicatorId} onChange={event=>setIndicatorId(Number(event.target.value))}><option value={0}>Pilih indikator</option>{structure.indicators.filter(row=>row.status==="ACTIVE").map(row=><option key={row.id} value={row.id}>{row.code} — {row.name}</option>)}</select></div>
+        {indicatorId>0&&<div className="scoring-columns"><div><h3>Variabel input</h3>{scoring.variables.filter(row=>row.indicatorId===indicatorId).map(row=><p className="registry-row" key={row.id}><span><b>{row.code}</b> · {row.label} <small>{row.valueType}{row.unit?` · ${row.unit}`:""}</small></span>{manage&&selected?.lifecycleStatus==="DRAFT"&&row.status==="ACTIVE"&&<button type="button" onClick={()=>void act(()=>request("/api/internal/accreditation/scoring","PATCH",{entity:"VARIABLE",id:row.id,status:"ARCHIVED"}))}>Arsipkan</button>}</p>)}{manage&&selected?.lifecycleStatus==="DRAFT"&&<form className="form" onSubmit={event=>{event.preventDefault();const data=formData(event);void act(()=>request("/api/internal/accreditation/scoring","POST",{entity:"VARIABLE",indicatorId,code:String(data.get("code")),label:String(data.get("label")),valueType:String(data.get("valueType")),unit:String(data.get("unit")||"")||undefined,required:true,sequence:Number(data.get("sequence"))||1}));}}><input name="code" placeholder="JUMLAH_LULUSAN" required/><input name="label" placeholder="Jumlah lulusan tepat waktu" required/><select name="valueType"><option>NUMBER</option><option>TEXT</option><option>BOOLEAN</option></select><input name="unit" placeholder="orang / % / dokumen"/><input name="sequence" type="number" defaultValue="1"/><button className="button">Tambah variabel</button></form>}</div>
+        <div><h3>Rubrik skor</h3>{scoring.rubrics.filter(row=>row.indicatorId===indicatorId).map(row=><p className="registry-row" key={row.id}><span><b>Skor {row.score}</b> · {row.label}<small>{row.description}</small></span>{manage&&selected?.lifecycleStatus==="DRAFT"&&row.status==="ACTIVE"&&<button type="button" onClick={()=>void act(()=>request("/api/internal/accreditation/scoring","PATCH",{entity:"RUBRIC",id:row.id,status:"ARCHIVED"}))}>Arsipkan</button>}</p>)}{manage&&selected?.lifecycleStatus==="DRAFT"&&<form className="form" onSubmit={event=>{event.preventDefault();const data=formData(event);let conditionRule:unknown;try{conditionRule=JSON.parse(String(data.get("conditionRule")));}catch{setMessage("Kondisi rubrik harus berupa JSON yang valid.");return;}void act(()=>request("/api/internal/accreditation/scoring","POST",{entity:"RUBRIC",indicatorId,score:Number(data.get("score")),label:String(data.get("label")),description:String(data.get("description")||"")||undefined,conditionRule,sequence:Number(data.get("sequence"))||1}));}}><input name="score" type="number" step="any" placeholder="4" required/><input name="label" placeholder="Melampaui target" required/><textarea name="description" placeholder="Penjelasan rubrik"/><textarea name="conditionRule" defaultValue={'{"variable":"$RESULT","operator":"GTE","value":80}'} required/><input name="sequence" type="number" defaultValue="1"/><button className="button">Tambah rubrik</button></form>}</div></div>}
+        {indicatorId>0&&manage&&selected?.lifecycleStatus==="DRAFT"&&<form className="formula-form" onSubmit={event=>{event.preventDefault();const data=formData(event);let scoringRule:unknown;try{scoringRule=JSON.parse(String(data.get("scoringRule")));}catch{setMessage("Rumus harus berupa JSON yang valid.");return;}void act(()=>request("/api/internal/accreditation/structure","PATCH",{entity:"INDICATOR",id:indicatorId,scoringRule}));}}><label><span>Rumus indikator (JSON aman, tanpa eval)</span><textarea name="scoringRule" defaultValue={JSON.stringify(structure.indicators.find(row=>row.id===indicatorId)?.scoringRule??{method:"FORMULA",expression:{op:"PERCENT",args:[{variable:"JUMLAH_TERCAPAI"},{variable:"JUMLAH_TOTAL"}]},precision:2},null,2)}/></label><button className="button">Simpan rumus indikator</button></form>}
+      </section>
+
       <section className="card">
         <h2>Indikator</h2>
-        {structure.indicators.map(row=><p key={row.id}><b>{row.code}</b> — {row.name}</p>)}
+        <div className="registry-list">{structure.indicators.map(row=><button className={indicatorId===row.id?"selected":""} type="button" key={row.id} onClick={()=>setIndicatorId(row.id)}><span><b>{row.code}</b> — {row.name}</span><small>{row.status} · bobot {row.weight??"—"}</small></button>)}</div>
+        {manage&&selected?.lifecycleStatus==="DRAFT"&&indicatorId>0&&<div className="registry-actions"><button type="button" onClick={()=>void act(()=>request("/api/internal/accreditation/structure","PATCH",{entity:"INDICATOR",id:indicatorId,status:"ARCHIVED"}))}>Arsipkan indikator terpilih</button></div>}
         {manage&&selected?.lifecycleStatus==="DRAFT"&&<form className="form" onSubmit={event=>{event.preventDefault();const data=formData(event);const clusterId=Number(data.get("clusterId"));void act(()=>request("/api/internal/accreditation/structure","POST",{entity:"INDICATOR",frameworkId,criterionId:Number(data.get("criterionId")),code:String(data.get("code")),name:String(data.get("name")),description:String(data.get("description")||"")||undefined,unit:String(data.get("unit")||"")||undefined,weight:Number(data.get("weight"))||undefined,sequence:Number(data.get("sequence"))||1,clusterIds:clusterId?[clusterId]:[],primaryClusterId:clusterId||undefined}));}}>
           <select name="criterionId" required><option value="">Pilih kriteria</option>{structure.criteria.filter(row=>row.status==="ACTIVE").map(row=><option key={row.id} value={row.id}>{row.code} — {row.name}</option>)}</select>
           <select name="clusterId"><option value="">Klaster utama (opsional)</option>{structure.clusters.filter(row=>row.status==="ACTIVE").map(row=><option key={row.id} value={row.id}>{row.code} — {row.name}</option>)}</select>
@@ -158,7 +171,7 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
 
       <section className="card">
         <h2>Kebutuhan Evidence</h2>
-        {structure.evidenceRequirements.map(row=><p key={row.id}><b>{row.code}</b> — {row.description}</p>)}
+        {structure.evidenceRequirements.map(row=><p className="registry-row" key={row.id}><span><b>{row.code}</b> — {row.description}</span>{manage&&selected?.lifecycleStatus==="DRAFT"&&row.status==="ACTIVE"&&<button type="button" onClick={()=>void act(()=>request("/api/internal/accreditation/structure","PATCH",{entity:"EVIDENCE_REQUIREMENT",id:row.id,status:"ARCHIVED"}))}>Arsipkan</button>}</p>)}
         {manage&&selected?.lifecycleStatus==="DRAFT"&&structure.indicators.length>0&&<form className="form" onSubmit={event=>{event.preventDefault();const data=formData(event);void act(()=>request("/api/internal/accreditation/structure","POST",{entity:"EVIDENCE_REQUIREMENT",indicatorId:Number(data.get("indicatorId")),code:String(data.get("code")),description:String(data.get("description")),required:true,acceptableSubjectTypes:String(data.get("subjectTypes")||"").split(",").map(value=>value.trim()).filter(Boolean)}));}}>
           <select name="indicatorId" required><option value="">Pilih indikator</option>{structure.indicators.filter(row=>row.status==="ACTIVE").map(row=><option key={row.id} value={row.id}>{row.code} — {row.name}</option>)}</select>
           <input name="code" placeholder="EV-01" required/>
@@ -171,7 +184,7 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
 
     <section className="card">
       <h2>Assignment Framework ke Program Studi</h2>
-      {assignments.map(row=><p key={row.id}><b>{row.studyProgramName}</b> → {row.agencyCode} / {row.frameworkName} <span className="badge">{row.assignmentStatus}{row.isPrimary?" · PRIMARY":""}</span></p>)}
+      {assignments.map(row=><p className="registry-row" key={row.id}><span><b>{row.studyProgramName}</b> → {row.agencyCode} / {row.frameworkName} <span className="badge">{row.assignmentStatus}{row.isPrimary?" · PRIMARY":""}</span></span>{assign&&row.assignmentStatus==="ACTIVE"&&<button type="button" onClick={()=>void act(()=>request(`/api/internal/accreditation/assignments?id=${row.id}`,"DELETE"))}>Arsipkan assignment</button>}</p>)}
       {assign&&<form className="form" onSubmit={event=>{event.preventDefault();const data=formData(event);void act(()=>request("/api/internal/accreditation/assignments","POST",{studyProgramId:Number(data.get("studyProgramId")),frameworkId:Number(data.get("frameworkId")),isPrimary:true,officialCoverageReference:String(data.get("coverage")||"")||undefined,notes:String(data.get("notes")||"")||undefined}));}}>
         <select name="studyProgramId" required><option value="">Pilih Program Studi</option>{programs.filter(row=>row.status==="ACTIVE").map(row=><option key={row.id} value={row.id}>{row.name}</option>)}</select>
         <select name="frameworkId" required><option value="">Pilih framework ACTIVE</option>{frameworks.filter(row=>row.lifecycleStatus==="ACTIVE").map(row=><option key={row.id} value={row.id}>{row.agencyCode} · {row.name}</option>)}</select>
