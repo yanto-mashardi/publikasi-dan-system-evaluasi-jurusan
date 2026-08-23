@@ -2,24 +2,16 @@ publication_policy:
   default_visibility: INTERNAL
 
   rules:
-    vision:
+    STRATEGIC_STATEMENT:
       requires_status: EFFECTIVE
       requires_approval: true
       public_fields:
-        - title
+        - statement_type
         - statement
-        - version
+        - version_number
         - effective_from
 
-    mission:
-      requires_status: EFFECTIVE
-      requires_approval: true
-      public_fields:
-        - statement
-        - sequence
-        - version
-
-    kpi_measurement:
+    KPI_MEASUREMENT:
       requires_status: APPROVED
       requires_approval: true
       public_fields:
@@ -30,26 +22,15 @@ publication_policy:
         - achievement_percent
         - status
         - public_summary
-        - followup_progress
 
-    evaluation:
+    EVALUATION:
       requires_status: APPROVED
       requires_approval: true
       public_fields:
-        - subject_title
+        - subject_type
         - period
         - public_summary
-        - recommendation_summary
         - followup_progress
-
-    accreditation:
-      public_fields:
-        - program_name
-        - accreditor
-        - official_status
-        - decree_number
-        - effective_date
-        - expiry_date
 
   always_private:
     - personal_data
