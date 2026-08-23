@@ -12,13 +12,13 @@ export const dynamic = "force-dynamic";
 type NavigationItem = { title: string; description: string; href?: string; permissions?: string[] };
 
 const operationalNavigation: NavigationItem[] = [
-  { title: "Perencanaan", description: "VMTS, Renstra, sasaran strategis, KPI, dan target." },
+  { title: "Perencanaan", description: "VMTS, Renstra, sasaran strategis, KPI, dan target.", href: "/internal/workflow#perencanaan" },
   { title: "Akademik & OBE", description: "Kurikulum, profil lulusan, CPL, CPMK, dan evaluasi kurikulum.", href: "/internal/academic", permissions: ["curriculum.manage", "data.create", "data.update", "evaluation.create", "approval.final", "publication.execute", "internal.read"] },
   { title: "Sumber Daya & Tridharma", description: "Laboratorium, SDM, penelitian, PkM, mahasiswa/lulusan, dan kerja sama.", href: "/internal/resources", permissions: ["resources.read", "resources.manage", "resources.contribute", "evaluation.create", "approval.final", "publication.execute"] },
-  { title: "Kinerja", description: "Realisasi KPI, perhitungan capaian, dan evidence." },
-  { title: "Mutu", description: "Evaluasi, temuan, rekomendasi, tindak lanjut, dan verifikasi." },
+  { title: "Kinerja", description: "Realisasi KPI, perhitungan capaian, dan evidence.", href: "/internal/workflow#pengukuran" },
+  { title: "Mutu", description: "Evaluasi, temuan, rekomendasi, tindak lanjut, dan verifikasi.", href: "/internal/workflow#analisis" },
   { title: "Akreditasi", description: "Framework, kriteria, indikator, kebutuhan evidence, dan assignment Prodi.", href: "/internal/accreditation", permissions: ["accreditation.read"] },
-  { title: "Publikasi", description: "Proyeksi record yang telah disahkan ke portal publik." },
+  { title: "Publikasi", description: "Proyeksi record yang telah disahkan ke portal publik.", href: "/internal/workflow#publikasi" },
 ];
 
 const ipoColumns = [
@@ -107,6 +107,7 @@ export default async function InternalDashboard() {
         <section className="workspace-actions" aria-labelledby="actions-heading">
           <div><span className="section-label">Mulai bekerja</span><h2 id="actions-heading">Buka data sumber</h2><p>Data contoh dapat langsung diperiksa, diubah, atau diganti admin melalui modul yang sudah tersedia.</p></div>
           <div className="action-links">
+            {can(session, "system.configure") && <Link href="/internal/workflow"><strong>Workflow Tata Kelola</strong><span>Ukur, analisis, tindak lanjut, setujui, dan publikasikan →</span></Link>}
             {allowed(session, operationalNavigation[1]) && <Link href="/internal/academic"><strong>Akademik & OBE</strong><span>Kurikulum, profil lulusan, CPL, dan review →</span></Link>}
             {allowed(session, operationalNavigation[2]) && <Link href="/internal/resources"><strong>Sumber Daya & Tridharma</strong><span>Lab, SDM, riset, PkM, mahasiswa, kerja sama →</span></Link>}
             {allowed(session, operationalNavigation[5]) && <Link href="/internal/accreditation"><strong>Registry Akreditasi</strong><span>Framework, struktur, dan assignment Prodi →</span></Link>}

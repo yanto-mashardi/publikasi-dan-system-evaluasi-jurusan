@@ -115,6 +115,20 @@ Data publik boleh kosong sebelum ada record yang melalui approval/publication. K
 - `/internal/academic`
 - `/internal/resources`
 - `/internal/accreditation`
+- `/internal/workflow`
+
+### Workflow Tata Kelola
+
+Pada `/internal/workflow`, uji alur berikut secara berurutan:
+
+1. **Perencanaan:** pilih KPI contoh dan simpan target untuk periode baru.
+2. **Pengukuran:** pilih KPI dan periode target yang sama, lalu isi realisasi. Sistem menghitung persentase capaian dan membuat record `SUBMITTED`.
+3. **Analisis Mutu:** pilih pengukuran submitted, lalu isi standar, realisasi, gap, analisis, akar masalah, temuan, dan rekomendasi.
+4. **Tindak Lanjut:** pilih rekomendasi terbuka dan buat action plan beserta tenggat.
+5. **Approval:** pilih pengukuran atau evaluasi submitted, kemudian setujui, minta revisi, atau tolak.
+6. **Publikasi:** record approved muncul pada antrean publikasi; isi judul dan ringkasan publik lalu terbitkan.
+
+Angka dashboard akan berubah setelah tahapan tersebut diselesaikan. Capaian KPI dihitung backend berdasarkan target, realisasi, dan arah KPI. Readiness akreditasi belum dihitung pada tahap ini.
 
 ### Administrasi Dinamis
 
