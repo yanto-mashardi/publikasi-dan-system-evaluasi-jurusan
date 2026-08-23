@@ -13,11 +13,14 @@ PROFIL
 └── Pimpinan
 
 PROGRAM STUDI
-├── D3 Nautika
-└── D3 Ketatalaksanaan Pelayaran Niaga
+└── [generated dari study_programs aktif]
+    ├── D3 Nautika (data awal)
+    ├── D3 Ketatalaksanaan Pelayaran Niaga (data awal)
+    └── Prodi lain jika ditambahkan Admin
 
 KINERJA
-├── Renstra
+├── Renstra UPPS
+├── Renstra/indikator per Prodi
 ├── Sasaran Strategis
 ├── Dashboard KPI
 └── Laporan Kinerja
@@ -33,15 +36,19 @@ AKREDITASI
 ├── Status Resmi
 ├── Riwayat
 ├── Dokumen Publik
-└── Evaluasi Kesiapan Internal (opsional, dengan label yang jelas)
+└── Evaluasi Kesiapan Internal (opsional, label harus jelas)
 
 AKADEMIK
-├── Kurikulum
+├── Kurikulum per Prodi
 ├── Profil Lulusan
 ├── CPL
+├── Mata Kuliah
 └── Riwayat Evaluasi Kurikulum
 
 LABORATORIUM
+├── Laboratorium UPPS
+├── Pemanfaatan lintas Prodi
+└── Informasi fasilitas publik yang disahkan
 
 RISET & PkM
 
@@ -60,8 +67,9 @@ BERITA
 DASHBOARD
 
 PERENCANAAN
-├── VMTS
-├── Renstra
+├── VMTS UPPS
+├── VMTS / visi keilmuan Prodi
+├── Renstra UPPS / Prodi
 ├── Sasaran
 ├── Program Strategis
 └── KPI & Target
@@ -69,7 +77,9 @@ PERENCANAAN
 AKADEMIK
 ├── Program Studi
 ├── Kurikulum
+├── Profil Lulusan
 ├── CPL / CPMK
+├── Mapping CPMK–CPL
 └── Evaluasi Kurikulum
 
 SUMBER DAYA
@@ -105,17 +115,18 @@ PUBLIKASI
 └── Arsip
 
 ADMINISTRASI
+├── Organizations / Jurusan
+├── Program Studi
 ├── Users
-├── Roles
+├── Roles & Permissions
 ├── Master Data
+├── Berita & Kategori
 ├── Workflow
 └── Audit Log
 ```
 
 ## 3. Rule
 
-Internal menu mengikuti **proses organisasi**.
-
-Public menu mengikuti **kebutuhan informasi pembaca**.
+Internal menu mengikuti **proses organisasi**. Public menu mengikuti **kebutuhan informasi pembaca**. Daftar Prodi, laboratorium, konten, dan objek lain dirender dari data aktif/published, bukan daftar hard-coded.
 
 Data sumber tetap satu.
