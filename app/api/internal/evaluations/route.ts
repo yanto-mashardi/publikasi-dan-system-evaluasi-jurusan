@@ -1,0 +1,9 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { requireDb } from "@/src/db";
+import { evaluations,findings,recommendations } from "@/src/db/schema";
+import { getSession } from "@/src/lib/auth";
+import { audit } from "@/src/lib/audit";
+import { can } from "@/src/lib/rbac";
+const input=z.object({subjectType:z.string().min(2),subjectId:z.number().int().positive(),period:z.string().optional(),standardReference:z.string().optional(),standardValue:z.string().optional(),actualValue:z.string().optional(),gapValue:z.string().optional(),analysis:z.string().min(5),rootCause:z.string().optional(),publicSummary:z.string().optional(),finding:z.string().optional(),severity:z.string().optional(),recommendation:z.string().optional(),priority:z.string().optional()});
+export async function POST(req:Request){const s=await getSession();if(!s)return NextResponse.json({error:"Unauthorized"},{status:401});if(!can(s,"evaluation.create"))return NextResponse.json({error:"Forbidden"},{status:403});const p=input.safeParse(await req.json());if(!p.success)return NextResponse.json({error:p.error.flatten()},{status:400});const db=requireDb();const{finding,severity,recommendation,priority,...evaluation}=p.data;const r=await db.insert(evaluations).values({...evaluation,evaluatorId:s.userId,status:"SUBMITTED",evaluatedAt:new Date()});const id=Number(r[0].insertId);if(finding)await db.insert(findings).values({evaluationId:id,description:finding,severity});if(recommendation)await db.insert(recommendations).values({evaluationId:id,recommendationText:recommendation,priority,status:"OPEN"});await audit({actorId:s.userId,action:"EVALUATE",subjectType:"EVALUATION",subjectId:id,after:p.data});return NextResponse.json({id,status:"SUBMITTED"},{status:201});}
