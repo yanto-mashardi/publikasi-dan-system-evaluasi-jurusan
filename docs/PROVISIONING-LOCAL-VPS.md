@@ -48,6 +48,25 @@ Pada VPS:
 
 Jangan memakai `.env.local` Master pada Tenant. Jangan menggunakan satu `AUTH_SECRET` atau token federasi untuk beberapa Jurusan.
 
+## Image Docker untuk VPS kecil
+
+Laptop lokal tetap memakai `npm run dev`. Docker hanya digunakan pada VPS. Repository menghasilkan satu image yang sama untuk mode `MASTER` dan `TENANT`; perbedaannya ditentukan oleh environment saat container dijalankan.
+
+GitHub Actions menerbitkan image ke GitHub Container Registry dengan tag branch, tag commit `sha-...`, tag rilis, dan `stable` khusus `main`. Untuk pengujian branch Docker gunakan tag branch. Untuk produksi gunakan tag rilis atau SHA, bukan mengandalkan tag bergerak.
+
+VPS 1 vCPU/2 GB RAM tidak melakukan build. VPS hanya menjalankan `docker pull`. MySQL dan Caddy tetap berjalan langsung pada host. Container aplikasi mengakses MySQL host melalui `host.docker.internal`, dipublikasikan hanya ke `127.0.0.1:PORT`, lalu Caddy meneruskan domain ke port lokal tersebut.
+
+Template uji tersedia di `deploy/docker/compose.instance.yml`:
+
+1. salin `.env.instance.example` menjadi `.env` dan isi image, nama container, port lokal, serta nama volume;
+2. salin `.env.runtime.example` menjadi `.env.runtime` dan isi mode aplikasi serta rahasia unik;
+3. pastikan akun MySQL hanya menerima koneksi dari jaringan bridge Docker dan tidak membuka port 3306 ke internet;
+4. jalankan `docker compose -f compose.instance.yml pull` lalu `docker compose -f compose.instance.yml up -d`;
+5. pastikan `docker inspect --format '{{.State.Health.Status}}' NAMA_CONTAINER` menghasilkan `healthy`;
+6. baru arahkan Caddy ke `127.0.0.1:HOST_PORT`.
+
+File `.env.runtime` tidak boleh disimpan ke Git. Evidence ditempatkan pada volume Docker permanen. Mengganti image/container tidak menghapus database atau volume evidence.
+
 ## Arti status
 
 - `DATABASE_READY`: database dan data awal tersedia, aplikasi belum dinyatakan berjalan.

@@ -1,0 +1,24 @@
+services:
+  application:
+    image: ${APPLICATION_IMAGE:?Isi APPLICATION_IMAGE dengan tag image GHCR}
+    container_name: ${CONTAINER_NAME:?Isi CONTAINER_NAME}
+    restart: unless-stopped
+    env_file:
+      - .env.runtime
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:${HOST_PORT:?Isi HOST_PORT}:3000"
+    volumes:
+      - evidence:/app/.data/evidence
+    mem_limit: ${MEMORY_LIMIT:-512m}
+    cpus: ${CPU_LIMIT:-0.75}
+    pids_limit: 256
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  evidence:
+    name: ${EVIDENCE_VOLUME:?Isi EVIDENCE_VOLUME}

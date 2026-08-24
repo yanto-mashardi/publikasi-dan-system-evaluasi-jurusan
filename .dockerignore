@@ -1,0 +1,15 @@
+.git
+.github
+.next
+.data
+.env
+.env.*
+.gh-cli
+.npm-cache
+node_modules
+output
+tmp
+*.log
+*.tsbuildinfo
+AGENTS.md
+CLAUDE.md
