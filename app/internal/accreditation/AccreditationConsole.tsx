@@ -28,6 +28,7 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
   const[structure,setStructure]=useState<Structure>(emptyStructure);
   const[scoring,setScoring]=useState<Scoring>(emptyScoring);
   const[indicatorId,setIndicatorId]=useState(0);
+  const[showAdvanced,setShowAdvanced]=useState(false);
   const[message,setMessage]=useState("");
 
   async function request(url:string,method="GET",body?:unknown){
@@ -59,7 +60,7 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
   }
 
   useEffect(()=>{void load();},[]);
-  useEffect(()=>{void loadStructure(frameworkId);},[frameworkId]);
+  useEffect(()=>{setShowAdvanced(false);void loadStructure(frameworkId);},[frameworkId]);
 
   const selected=useMemo(()=>frameworks.find(row=>row.id===frameworkId),[frameworks,frameworkId]);
   const formData=(event:FormEvent<HTMLFormElement>)=>new FormData(event.currentTarget);
@@ -223,9 +224,15 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
       </div>
     </section>}
 
-    {manage&&selected&&<section className="card selected-template"><div className="registry-heading"><div><span className="eyebrow">TEMPLATE DIBUKA</span><h2>{selected.agencyName} — {selected.name}</h2><p className="muted">{selected.educationLevel??"Semua jenjang"} · {selected.lifecycleStatus}</p></div>{selected.lifecycleStatus==="DRAFT"&&<button className="button" type="button" onClick={()=>void act(()=>request(`/api/internal/accreditation/frameworks?id=${selected.id}`,"PATCH",{lifecycleStatus:"ACTIVE"}))}>Aktifkan template</button>}</div>{selected.lifecycleStatus==="DRAFT"&&<div className="excel-import"><h3>Tambahkan isi melalui Excel</h3><form className="form" encType="multipart/form-data" onSubmit={importExcel}><input name="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required/><button className="button">Upload Excel ke template ini</button></form></div>}</section>}
+    {manage&&selected&&<section className="card selected-template">
+      <div className="registry-heading"><div><span className="eyebrow">TEMPLATE DIPILIH</span><h2>{selected.agencyName} — {selected.name}</h2><p className="muted">{selected.educationLevel??"Semua jenjang"} · {selected.lifecycleStatus}</p></div></div>
+      <div className="template-summary"><div><b>{structure.clusters.length}</b><span>Kelompok IPO</span></div><div><b>{structure.criteria.length}</b><span>Kriteria</span></div><div><b>{structure.indicators.length}</b><span>Indikator</span></div><div><b>{scoring.variables.length}</b><span>Variabel</span></div><div><b>{scoring.rubrics.length}</b><span>Rubrik</span></div><div><b>{structure.evidenceRequirements.length}</b><span>Evidence</span></div></div>
+      {selected.lifecycleStatus==="DRAFT"&&structure.indicators.length===0&&<div className="excel-import"><h3>Template belum memiliki isi</h3><p className="muted">Upload Excel atau buka pengaturan lanjutan untuk mengisi manual.</p><form className="form" encType="multipart/form-data" onSubmit={importExcel}><input name="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required/><button className="button">Upload Excel</button></form></div>}
+      {selected.lifecycleStatus==="DRAFT"&&structure.indicators.length>0&&<p className="template-ready">Isi template sudah tersimpan. Jika jumlah di atas benar, aktifkan agar dapat dipilih saat membuat Program Studi.</p>}
+      <div className="template-primary-actions"><button className="button secondary" type="button" onClick={()=>setShowAdvanced(value=>!value)}>{showAdvanced?"Tutup pengaturan lanjutan":"Buka pengaturan lanjutan"}</button>{selected.lifecycleStatus==="DRAFT"&&structure.indicators.length>0&&<button className="button" type="button" onClick={()=>void act(()=>request(`/api/internal/accreditation/frameworks?id=${selected.id}`,"PATCH",{lifecycleStatus:"ACTIVE"}))}>Aktifkan template</button>}</div>
+    </section>}
 
-    {frameworkId>0&&<>
+    {frameworkId>0&&(!manage||showAdvanced)&&<>
       <section className="grid">
         <div className="card">
           <h2>Klaster</h2>
