@@ -8,7 +8,7 @@ import { isMasterApplication } from "@/src/lib/application-mode";
 export const dynamic = "force-dynamic";
 
 export default async function PublicHome() {
-  if(isMasterApplication())redirect((await getSession())?"/master":"/internal/login");
+  if(isMasterApplication())redirect((await getSession())?"/internal/accreditation":"/internal/login");
   const [kpis, statements, evaluations, identity] = await Promise.all([
     getPublicKpis(), getPublicStatements(), getPublicEvaluations(), getSiteIdentity(),
   ]);

@@ -30,5 +30,5 @@ export async function POST(request:Request){
   const scopes=[...scopeMap.values()];
   const primary=scopes[0];
   await createSession({userId:user.userId,email:user.email,name:user.name,roles:roleList,permissions:permissionList,scopes,role:primary?.role,organizationId:primary?.organizationId,studyProgramId:primary?.studyProgramId});
-  return NextResponse.redirect(new URL(isMasterApplication()?"/master":"/internal",request.url),303);
+  return NextResponse.redirect(new URL(isMasterApplication()?"/internal/accreditation":"/internal",request.url),303);
 }

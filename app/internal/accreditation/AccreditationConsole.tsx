@@ -88,10 +88,75 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
     }catch(error){setMessage(error instanceof Error?error.message:"Impor gagal");}
   }
 
+  const slug=(value:string)=>value.normalize("NFKD").replace(/[^a-zA-Z0-9]+/g,"_").replace(/^_+|_+$/g,"").toUpperCase();
+
+  async function createTemplate(event:FormEvent<HTMLFormElement>){
+    event.preventDefault();
+    const form=event.currentTarget;
+    const data=new FormData(form);
+    try{
+      setMessage("Membuat template...");
+      let agencyId=Number(data.get("agencyId"));
+      let agencyCode=agencies.find(row=>row.id===agencyId)?.code as string|undefined;
+      const newAgencyName=String(data.get("newAgencyName")||"").trim();
+      if(!agencyId){
+        if(!newAgencyName)throw new Error("Pilih LAM yang ada atau isi nama LAM baru.");
+        agencyCode=`LAM_${slug(newAgencyName).replace(/^LAM_?/,"")||"BARU"}`;
+        const agency=await request("/api/internal/accreditation/agencies","POST",{code:agencyCode,name:newAgencyName,agencyType:"LAM"});
+        agencyId=Number(agency.id);
+      }
+      const name=String(data.get("name")||"").trim();
+      const educationLevel=String(data.get("educationLevel")||"").trim();
+      const code=`${agencyCode}-${slug(educationLevel)}-${slug(name)}-${Date.now().toString(36).toUpperCase()}`;
+      const framework=await request("/api/internal/accreditation/frameworks","POST",{agencyId,code,name,educationLevel,versionNumber:1});
+      const newFrameworkId=Number(framework.id);
+      const method=String(data.get("method"));
+      const file=data.get("file");
+      if(method==="EXCEL"){
+        if(!(file instanceof File)||file.size===0)throw new Error("Pilih file Excel yang akan diimpor.");
+        const upload=new FormData();upload.set("frameworkId",String(newFrameworkId));upload.set("file",file);
+        const response=await fetch("/api/internal/accreditation/import",{method:"POST",body:upload});
+        const result=await response.json().catch(()=>({}));
+        if(!response.ok)throw new Error(typeof result.error==="string"?result.error:"Impor Excel gagal");
+      }
+      form.reset();setFrameworkId(newFrameworkId);await load();await loadStructure(newFrameworkId);
+      setMessage(method==="EXCEL"?"Template dan isi Excel berhasil dibuat.":"Template manual berhasil dibuat. Silakan isi strukturnya di bawah.");
+    }catch(error){setMessage(error instanceof Error?error.message:"Gagal membuat template");}
+  }
+
+  async function editTemplate(row:Row){
+    const name=window.prompt("Nama template",String(row.name));if(name===null)return;
+    const level=window.prompt("Jenjang (D3, D4, S1, S2, S3, atau PROFESI)",String(row.educationLevel??""));if(level===null)return;
+    if(!name.trim()||!level.trim()){setMessage("Nama dan jenjang wajib diisi.");return;}
+    if(row.lifecycleStatus==="DRAFT")return void act(()=>request(`/api/internal/accreditation/frameworks?id=${row.id}`,"PATCH",{name:name.trim(),educationLevel:level.trim().toUpperCase()}));
+    const version=Number(row.versionNumber||1)+1;
+    await act(async()=>{const copy=await request("/api/internal/accreditation/frameworks","POST",{agencyId:Number(row.agencyId),code:String(row.code),name:name.trim(),educationLevel:level.trim().toUpperCase(),versionNumber:version});setFrameworkId(Number(copy.id));});
+    setMessage("Template aktif tidak diubah langsung. Versi DRAFT baru sudah dibuat agar riwayat tetap aman.");
+  }
+
   return <div className="section">
     {message&&<div className="card" style={{marginBottom:16}}>{message}</div>}
 
-    <section className="grid">
+    {manage&&<>
+      <section className="card template-library">
+        <div className="registry-heading"><div><span className="eyebrow">TEMPLATE TERSEDIA</span><h2>Template LAM yang sudah dibuat</h2></div></div>
+        {frameworks.filter(row=>row.lifecycleStatus!=="ARCHIVED").length===0?<p className="muted">Belum ada template. Gunakan formulir di bawah untuk membuat yang pertama.</p>:<div className="registry-list">{frameworks.filter(row=>row.lifecycleStatus!=="ARCHIVED").map(row=><div className="template-item" key={row.id}><button type="button" onClick={()=>setFrameworkId(row.id)}><span><b>{row.agencyName}</b> — {row.name}</span><small>{row.educationLevel??"Semua jenjang"} · {row.lifecycleStatus}</small></button><div className="registry-actions"><button type="button" onClick={()=>setFrameworkId(row.id)}>Buka</button><button type="button" onClick={()=>void editTemplate(row)}>Edit</button><button type="button" className="danger" onClick={()=>{if(window.confirm(`Hapus template ${row.name}?`))void act(()=>request(`/api/internal/accreditation/frameworks?id=${row.id}`,"DELETE"));}}>Hapus</button></div></div>)}</div>}
+      </section>
+      <section className="card simple-template-form">
+        <h2>Tambah Template LAM</h2><p className="muted">Cukup tentukan LAM, nama template, jenjang, dan cara mengisinya.</p>
+        <form className="form" encType="multipart/form-data" onSubmit={createTemplate}>
+          <label><span>Nama LAM</span><select name="agencyId" defaultValue=""><option value="">LAM baru</option>{agencies.filter(row=>row.status==="ACTIVE").map(row=><option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+          <label><span>Jika LAM belum ada, tulis nama LAM baru</span><input name="newAgencyName" placeholder="Contoh: LAM Teknik"/></label>
+          <label><span>Nama template</span><input name="name" placeholder="Contoh: Instrumen Akreditasi Program Studi" required/></label>
+          <label><span>Jenjang</span><select name="educationLevel" required defaultValue=""><option value="">Pilih jenjang</option><option>D3</option><option>D4</option><option>S1</option><option>S2</option><option>S3</option><option>PROFESI</option></select></label>
+          <label><span>Cara mengisi framework</span><select name="method" defaultValue="MANUAL"><option value="MANUAL">Isi manual</option><option value="EXCEL">Upload dari Excel</option></select></label>
+          <label><span>File Excel (hanya jika memilih upload Excel)</span><input name="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"/></label>
+          <div className="registry-actions"><a className="button secondary" href="/api/internal/accreditation/import">Unduh contoh Excel</a><button className="button">Tambah template</button></div>
+        </form>
+      </section>
+    </>}
+
+    {!manage&&<section className="grid">
       <div className="card">
         <h2>Lembaga Akreditasi</h2>
         {agencies.map(agency=><p className="registry-row" key={agency.id}><span><b>{agency.code}</b> — {agency.name} <span className="badge">{agency.status}</span></span>{manage&&agency.status==="ACTIVE"&&<button type="button" onClick={()=>void act(()=>request(`/api/internal/accreditation/agencies?id=${agency.id}`,"DELETE"))}>Arsipkan</button>}</p>)}
@@ -138,7 +203,9 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
           <button className="button">Buat DRAFT & lanjut upload Excel</button>
         </form>}
       </div>
-    </section>
+    </section>}
+
+    {manage&&selected&&<section className="card selected-template"><div className="registry-heading"><div><span className="eyebrow">TEMPLATE DIBUKA</span><h2>{selected.agencyName} — {selected.name}</h2><p className="muted">{selected.educationLevel??"Semua jenjang"} · {selected.lifecycleStatus}</p></div>{selected.lifecycleStatus==="DRAFT"&&<button className="button" type="button" onClick={()=>void act(()=>request(`/api/internal/accreditation/frameworks?id=${selected.id}`,"PATCH",{lifecycleStatus:"ACTIVE"}))}>Aktifkan template</button>}</div>{selected.lifecycleStatus==="DRAFT"&&<div className="excel-import"><h3>Tambahkan isi melalui Excel</h3><form className="form" encType="multipart/form-data" onSubmit={importExcel}><input name="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required/><button className="button">Upload Excel ke template ini</button></form></div>}</section>}
 
     {frameworkId>0&&<>
       <section className="grid">
