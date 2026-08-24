@@ -8,7 +8,7 @@ import { getSession } from "@/src/lib/auth";
 import { isMasterApplication } from "@/src/lib/application-mode";
 import { can } from "@/src/lib/rbac";
 import { audit } from "@/src/lib/audit";
-import { deleteTenantDatabase,provisionTenantDatabase } from "@/src/services/tenant-provisioning";
+import { deleteTenantDatabase,getTenantDatabaseDetails,provisionTenantDatabase,resetTenantAdminPassword } from "@/src/services/tenant-provisioning";
 import { randomBytes } from "node:crypto";
 import { encryptFederationToken } from "@/src/services/federation-security";
 import { accreditationFrameworks } from "@/src/db/schema-accreditation";
@@ -17,7 +17,7 @@ import { assertLocalTenantTargetAvailable,createLocalTenantInstance,deleteLocalT
 const input=z.object({code:z.string().min(2).max(80).regex(/^[A-Za-z][A-Za-z0-9_-]+$/),name:z.string().min(3).max(255),domain:z.string().url(),databaseName:z.string().regex(/^[A-Za-z][A-Za-z0-9_]{2,63}$/),organizationType:z.enum(["UPPS","JURUSAN","FAKULTAS"]).default("UPPS"),deploymentTarget:z.enum(["LOCAL","VPS"]).default("LOCAL"),programs:z.array(z.object({code:z.string().min(2).max(50),name:z.string().min(3).max(255),level:z.string().max(50).optional(),frameworkCode:z.string().min(2).max(120)})).min(1),adminName:z.string().min(3).max(255),adminEmail:z.string().email(),adminPassword:z.string().min(10).max(128)});
 async function guard(){const session=await getSession();if(!session)return {response:NextResponse.json({error:"Unauthorized"},{status:401})};if(!isMasterApplication())return {response:NextResponse.json({error:"Endpoint provisioning hanya aktif pada APP_MODE=MASTER."},{status:409})};if(!can(session,"system.configure"))return {response:NextResponse.json({error:"Forbidden"},{status:403})};return {session};}
 
-export async function GET(){const auth=await guard();if(auth.response)return auth.response;const rows=await requireDb().select().from(tenantApplications);return NextResponse.json(rows.map(({encryptedFederationToken,...row})=>({...row,federationConfigured:Boolean(encryptedFederationToken)})));}
+export async function GET(req:Request){const auth=await guard();if(auth.response)return auth.response;const db=requireDb(),id=Number(new URL(req.url).searchParams.get("id"));if(Number.isSafeInteger(id)&&id>0){const[tenant]=await db.select().from(tenantApplications).where(eq(tenantApplications.id,id)).limit(1);if(!tenant)return NextResponse.json({error:"Aplikasi Jurusan tidak ditemukan."},{status:404});try{const databaseDetails=await getTenantDatabaseDetails(tenant.databaseName);const{encryptedFederationToken,...safeTenant}=tenant;return NextResponse.json({...safeTenant,federationConfigured:Boolean(encryptedFederationToken),databaseDetails});}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Detail database Jurusan tidak dapat dibaca."},{status:409});}}const rows=await db.select().from(tenantApplications);return NextResponse.json(rows.map(({encryptedFederationToken,...row})=>({...row,federationConfigured:Boolean(encryptedFederationToken)})));}
 
 export async function POST(req:Request){
   const auth=await guard();if(auth.response)return auth.response;
@@ -59,4 +59,12 @@ export async function DELETE(req:Request){
   });
   await audit({actorId:auth.session!.userId,action:"DELETE_TENANT_PERMANENT",subjectType:"TENANT_APPLICATION",subjectId:id,before:{id:tenant.id,code:tenant.code,name:tenant.name,domain:tenant.domain,databaseName:tenant.databaseName},after:{databaseDeleted:database.databaseDeleted,folderDeleted:folder?.folderDeleted??false}});
   return NextResponse.json({deleted:true,message:`Aplikasi ${tenant.name} dan database ${tenant.databaseName} telah dihapus permanen.`,database,folder});
+}
+
+export async function PATCH(req:Request){
+  const auth=await guard();if(auth.response)return auth.response;
+  const parsed=z.object({id:z.number().int().positive(),action:z.literal("RESET_ADMIN_PASSWORD"),email:z.string().email(),newPassword:z.string().min(10).max(128)}).safeParse(await req.json().catch(()=>null));if(!parsed.success)return NextResponse.json({error:"Email dan password baru minimal 10 karakter wajib diisi."},{status:400});
+  const db=requireDb();const[tenant]=await db.select().from(tenantApplications).where(eq(tenantApplications.id,parsed.data.id)).limit(1);if(!tenant)return NextResponse.json({error:"Aplikasi Jurusan tidak ditemukan."},{status:404});
+  const configuration=(tenant.configuration??{}) as {adminEmail?:string};
+  try{const result=await resetTenantAdminPassword(tenant.databaseName,parsed.data.email,parsed.data.newPassword,configuration.adminEmail);await audit({actorId:auth.session!.userId,action:"RESET_TENANT_ADMIN_PASSWORD",subjectType:"TENANT_APPLICATION",subjectId:tenant.id,after:{email:result.email,password:"[REDACTED]"}});return NextResponse.json({message:`Password ${result.email} berhasil diatur ulang dan akun dipastikan aktif.`});}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Password tidak dapat diatur ulang."},{status:409});}
 }

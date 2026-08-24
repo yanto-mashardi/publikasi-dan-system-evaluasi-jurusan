@@ -29,6 +29,10 @@ Gunakan tombol **Hapus permanen** hanya dari daftar **Aplikasi Jurusan**. Super 
 
 Penghapusan permanen tidak dapat dibatalkan. Jangan menggunakannya pada Tenant produksi sebelum database dan berkas evidence dicadangkan.
 
+## Detail dan pemulihan akun Jurusan
+
+Tombol **Detail** pada daftar Aplikasi Jurusan membaca database Tenant dan menampilkan identitas, Prodi, instrumen yang terpasang, serta akun pengelola dan role-nya. Password lama tidak pernah ditampilkan karena hanya hash yang disimpan. Jika pengguna lupa password, Super Admin dapat menetapkan password baru minimal 10 karakter dari panel detail; tindakan ini dicatat dalam audit log tanpa menyimpan password baru pada log.
+
 ## Pilihan server/VPS
 
 Pilih **Server/VPS — siapkan konfigurasi deployment**. Master membuat database, data awal, distribusi instrumen, token federasi, dan registry, tetapi tidak membuat folder pada laptop serta tidak membuat domain langsung online.

@@ -1,5 +1,6 @@
 import mysql from "mysql2/promise";
 import bcrypt from "bcryptjs";
+import {PERMISSIONS,ROLE_GRANTS,ROLE_NAMES} from "@/src/config/access-baseline";
 
 const tenantTables=[
   "organizations","study_programs","users","roles","permissions","role_permissions","user_roles","role_settings",
@@ -12,6 +13,16 @@ const tenantTables=[
 function safeIdentifier(value:string){if(!/^[a-zA-Z][a-zA-Z0-9_]{2,63}$/.test(value))throw new Error("Nama database hanya boleh berisi huruf, angka, dan underscore (3-64 karakter).");return value;}
 
 type TenantSeed={code:string;name:string;organizationType:string;programs:Array<{code:string;name:string;level?:string;frameworkCode?:string}>;adminName:string;adminEmail:string;adminPassword:string};
+
+async function ensureTenantAccessBaseline(connection:mysql.Connection,target:string){
+  for(const code of PERMISSIONS)await connection.execute(`INSERT INTO \`${target}\`.permissions (code,name) VALUES (?,?) ON DUPLICATE KEY UPDATE name=VALUES(name)`,[code,code]);
+  for(const[code,name]of Object.entries(ROLE_NAMES)){
+    await connection.execute(`INSERT INTO \`${target}\`.roles (code,name) VALUES (?,?) ON DUPLICATE KEY UPDATE name=VALUES(name)`,[code,name]);
+    await connection.execute(`INSERT INTO \`${target}\`.role_settings (role_id,status,is_system_role,updated_at) SELECT id,'ACTIVE',TRUE,NOW() FROM \`${target}\`.roles WHERE code=? ON DUPLICATE KEY UPDATE status='ACTIVE',is_system_role=TRUE,updated_at=NOW()`,[code]);
+    await connection.execute(`DELETE rp FROM \`${target}\`.role_permissions rp INNER JOIN \`${target}\`.roles r ON r.id=rp.role_id WHERE r.code=?`,[code]);
+    for(const permissionCode of ROLE_GRANTS[code]??[])await connection.execute(`INSERT IGNORE INTO \`${target}\`.role_permissions (role_id,permission_id) SELECT r.id,p.id FROM \`${target}\`.roles r CROSS JOIN \`${target}\`.permissions p WHERE r.code=? AND p.code=?`,[code,permissionCode]);
+  }
+}
 
 export async function provisionTenantDatabase(databaseName:string,seed:TenantSeed){
   const adminUrl=process.env.MASTER_DATABASE_ADMIN_URL;
@@ -27,6 +38,7 @@ export async function provisionTenantDatabase(databaseName:string,seed:TenantSee
     await connection.query("SET FOREIGN_KEY_CHECKS=0");
     for(const table of tenantTables)if(available.has(table))await connection.query(`CREATE TABLE IF NOT EXISTS \`${target}\`.\`${table}\` LIKE \`${source}\`.\`${table}\``);
     for(const table of ["roles","permissions","role_permissions","role_settings","publication_policies","accreditation_agencies","accreditation_frameworks","accreditation_clusters","accreditation_criteria","accreditation_indicators","accreditation_indicator_variables","accreditation_scoring_rubrics","accreditation_indicator_clusters","accreditation_evidence_requirements"] as const)if(available.has(table))await connection.query(`INSERT IGNORE INTO \`${target}\`.\`${table}\` SELECT * FROM \`${source}\`.\`${table}\``);
+    await ensureTenantAccessBaseline(connection,target);
     const[organizations]=await connection.execute<mysql.ResultSetHeader>(`INSERT INTO \`${target}\`.organizations (organization_type,code,name,status,created_at) VALUES (?,?,?,?,NOW())`,[seed.organizationType,seed.code,seed.name,"ACTIVE"]);
     for(const program of seed.programs){const[created]=await connection.execute<mysql.ResultSetHeader>(`INSERT INTO \`${target}\`.study_programs (organization_id,code,name,level,status) VALUES (?,?,?,?,?)`,[organizations.insertId,program.code,program.name,program.level??null,"ACTIVE"]);if(program.frameworkCode)await connection.execute(`INSERT INTO \`${target}\`.study_program_accreditation_frameworks (study_program_id,framework_id,is_primary,assignment_status,created_at,updated_at) SELECT ?,id,TRUE,'ACTIVE',NOW(),NOW() FROM \`${target}\`.accreditation_frameworks WHERE code=? AND lifecycle_status='ACTIVE' ORDER BY version_number DESC LIMIT 1`,[created.insertId,program.frameworkCode]);}
     const passwordHash=await bcrypt.hash(seed.adminPassword,12);
@@ -46,4 +58,32 @@ export async function deleteTenantDatabase(databaseName:string){
   const connection=await mysql.createConnection(adminUrl);
   try{await connection.query(`DROP DATABASE IF EXISTS \`${target}\``);return {databaseName:target,databaseDeleted:true};}
   finally{await connection.end();}
+}
+
+export async function getTenantDatabaseDetails(databaseName:string){
+  const adminUrl=process.env.MASTER_DATABASE_ADMIN_URL;
+  if(!adminUrl)throw new Error("MASTER_DATABASE_ADMIN_URL belum dikonfigurasi.");
+  const target=safeIdentifier(databaseName),connection=await mysql.createConnection(adminUrl);
+  try{
+    const[organizations]=await connection.query<mysql.RowDataPacket[]>(`SELECT id,organization_type AS organizationType,code,name,status FROM \`${target}\`.organizations ORDER BY id`);
+    const[programs]=await connection.query<mysql.RowDataPacket[]>(`SELECT sp.id,sp.code,sp.name,sp.level,sp.status,af.code AS frameworkCode,af.name AS frameworkName,af.version_number AS frameworkVersion,aa.code AS agencyCode,aa.name AS agencyName FROM \`${target}\`.study_programs sp LEFT JOIN \`${target}\`.study_program_accreditation_frameworks assignment ON assignment.study_program_id=sp.id AND assignment.assignment_status='ACTIVE' LEFT JOIN \`${target}\`.accreditation_frameworks af ON af.id=assignment.framework_id LEFT JOIN \`${target}\`.accreditation_agencies aa ON aa.id=af.agency_id ORDER BY sp.id,assignment.is_primary DESC`);
+    const[admins]=await connection.query<mysql.RowDataPacket[]>(`SELECT DISTINCT u.id,u.name,u.email,u.status,r.code AS roleCode,r.name AS roleName,ur.organization_id AS organizationId,ur.study_program_id AS studyProgramId FROM \`${target}\`.users u LEFT JOIN \`${target}\`.user_roles ur ON ur.user_id=u.id LEFT JOIN \`${target}\`.roles r ON r.id=ur.role_id ORDER BY u.id,r.code`);
+    return {organizations,programs,admins};
+  }finally{await connection.end();}
+}
+
+export async function resetTenantAdminPassword(databaseName:string,email:string,newPassword:string,expectedInitialAdminEmail?:string){
+  const adminUrl=process.env.MASTER_DATABASE_ADMIN_URL;
+  if(!adminUrl)throw new Error("MASTER_DATABASE_ADMIN_URL belum dikonfigurasi.");
+  const target=safeIdentifier(databaseName),connection=await mysql.createConnection(adminUrl);
+  try{
+    await ensureTenantAccessBaseline(connection,target);
+    const allowInitialAdmin=expectedInitialAdminEmail?.toLowerCase()===email.toLowerCase();
+    const[users]=await connection.execute<mysql.RowDataPacket[]>(`SELECT DISTINCT u.id FROM \`${target}\`.users u LEFT JOIN \`${target}\`.user_roles ur ON ur.user_id=u.id LEFT JOIN \`${target}\`.roles r ON r.id=ur.role_id WHERE LOWER(u.email)=LOWER(?) AND (r.code IN ('ADMIN_DATA','KAPRODI','KAJUR','ADMIN_SYSTEM') OR ?=TRUE) LIMIT 1`,[email,allowInitialAdmin]);
+    if(!users.length)throw new Error("Akun pengelola tersebut tidak ditemukan pada database Jurusan.");
+    const passwordHash=await bcrypt.hash(newPassword,12);
+    await connection.execute(`UPDATE \`${target}\`.users SET password_hash=?,status='ACTIVE' WHERE id=?`,[passwordHash,users[0].id]);
+    if(allowInitialAdmin)await connection.execute(`INSERT INTO \`${target}\`.user_roles (user_id,role_id,organization_id,study_program_id) SELECT ?,r.id,o.id,NULL FROM \`${target}\`.roles r CROSS JOIN \`${target}\`.organizations o WHERE r.code='ADMIN_DATA' ORDER BY o.id LIMIT 1 ON DUPLICATE KEY UPDATE role_id=VALUES(role_id),organization_id=VALUES(organization_id)`,[users[0].id]);
+    return {email:email.toLowerCase(),passwordReset:true};
+  }finally{await connection.end();}
 }
