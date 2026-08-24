@@ -1,4 +1,4 @@
-import {access,cp,mkdir,writeFile} from "node:fs/promises";
+import {access,cp,mkdir,readFile,rm,writeFile} from "node:fs/promises";
 import path from "node:path";
 import {randomBytes} from "node:crypto";
 
@@ -57,4 +57,19 @@ export async function createLocalTenantInstance(input:{name:string;code:string;d
   ].join("\n");
   await writeFile(path.join(target,".env.local"),environment,{encoding:"utf8",flag:"wx"});
   return {status:"TENANT_LOCAL_READY",folderPath:target,environmentFile:path.join(target,".env.local")};
+}
+
+export async function deleteLocalTenantInstance(input:{name:string;code:string;databaseName:string}){
+  const {target}=resolveLocalTenantTarget(input.name,input.code);
+  try{
+    const environment=await readFile(path.join(target,".env.local"),"utf8");
+    const expectedMode=/^APP_MODE=TENANT\s*$/m.test(environment);
+    const expectedDatabase=new RegExp(`^DATABASE_URL=.*\\/${input.databaseName.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}\\s*$`,"m").test(environment);
+    if(!expectedMode||!expectedDatabase)throw new Error(`Folder ${target} tidak memiliki konfigurasi Tenant yang sesuai; folder tidak dihapus otomatis.`);
+    await rm(target,{recursive:true,force:false});
+    return {folderPath:target,folderDeleted:true};
+  }catch(error){
+    if(error instanceof Error&&"code" in error&&(error as NodeJS.ErrnoException).code==="ENOENT")return {folderPath:target,folderDeleted:false};
+    throw error;
+  }
 }

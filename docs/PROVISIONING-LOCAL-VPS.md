@@ -23,6 +23,12 @@ Jika port tersebut dipakai, gunakan port lain. Login Tenant berada di `http://lo
 
 Folder dengan nama yang sama tidak pernah ditimpa. Pindahkan folder lama atau gunakan identitas Jurusan yang benar sebelum mencoba lagi.
 
+## Menghapus provisioning yang salah
+
+Gunakan tombol **Hapus permanen** hanya dari daftar **Aplikasi Jurusan**. Super Admin harus mengetik ulang kode Jurusan. Sistem menghapus database Tenant, distribusi template, riwayat pekerjaan provisioning, registry federasi, dan record aplikasi Master. Untuk provisioning lokal baru, folder Tenant ikut dihapus hanya setelah `.env.local` di dalamnya terbukti memakai mode `TENANT` dan menunjuk ke database yang sama. Folder yang tidak dapat diverifikasi tidak akan dihapus otomatis.
+
+Penghapusan permanen tidak dapat dibatalkan. Jangan menggunakannya pada Tenant produksi sebelum database dan berkas evidence dicadangkan.
+
 ## Pilihan server/VPS
 
 Pilih **Server/VPS — siapkan konfigurasi deployment**. Master membuat database, data awal, distribusi instrumen, token federasi, dan registry, tetapi tidak membuat folder pada laptop serta tidak membuat domain langsung online.

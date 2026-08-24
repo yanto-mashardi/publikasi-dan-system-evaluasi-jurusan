@@ -8,11 +8,11 @@ import { getSession } from "@/src/lib/auth";
 import { isMasterApplication } from "@/src/lib/application-mode";
 import { can } from "@/src/lib/rbac";
 import { audit } from "@/src/lib/audit";
-import { provisionTenantDatabase } from "@/src/services/tenant-provisioning";
+import { deleteTenantDatabase,provisionTenantDatabase } from "@/src/services/tenant-provisioning";
 import { randomBytes } from "node:crypto";
 import { encryptFederationToken } from "@/src/services/federation-security";
 import { accreditationFrameworks } from "@/src/db/schema-accreditation";
-import { assertLocalTenantTargetAvailable,createLocalTenantInstance } from "@/src/services/local-tenant-instance";
+import { assertLocalTenantTargetAvailable,createLocalTenantInstance,deleteLocalTenantInstance } from "@/src/services/local-tenant-instance";
 
 const input=z.object({code:z.string().min(2).max(80).regex(/^[A-Za-z][A-Za-z0-9_-]+$/),name:z.string().min(3).max(255),domain:z.string().url(),databaseName:z.string().regex(/^[A-Za-z][A-Za-z0-9_]{2,63}$/),organizationType:z.enum(["UPPS","JURUSAN","FAKULTAS"]).default("UPPS"),deploymentTarget:z.enum(["LOCAL","VPS"]).default("LOCAL"),programs:z.array(z.object({code:z.string().min(2).max(50),name:z.string().min(3).max(255),level:z.string().max(50).optional(),frameworkCode:z.string().min(2).max(120)})).min(1),adminName:z.string().min(3).max(255),adminEmail:z.string().email(),adminPassword:z.string().min(10).max(128)});
 async function guard(){const session=await getSession();if(!session)return {response:NextResponse.json({error:"Unauthorized"},{status:401})};if(!isMasterApplication())return {response:NextResponse.json({error:"Endpoint provisioning hanya aktif pada APP_MODE=MASTER."},{status:409})};if(!can(session,"system.configure"))return {response:NextResponse.json({error:"Forbidden"},{status:403})};return {session};}
@@ -39,4 +39,24 @@ export async function POST(req:Request){
     await audit({actorId:auth.session!.userId,action:"PROVISION_TENANT",subjectType:"TENANT_APPLICATION",subjectId:tenantId,after:{...data,adminPassword:"[REDACTED]",provision}});
     return NextResponse.json({tenantId,jobId,status:deploymentStatus,message:localInstance?`Database dan folder aplikasi Tenant berhasil dibuat di ${localInstance.folderPath}.`:`Database berhasil dibuat. Deployment VPS masih perlu dilakukan pada domain ${data.domain}.`,deployment:{target:data.deploymentTarget,domain:data.domain,appMode:"TENANT",databaseName:data.databaseName,localFolder:localInstance?.folderPath??null,environmentFile:localInstance?.environmentFile??null,federationEndpoint:`${data.domain}/api/federation/summary`,federationToken,requiredEnvironment:{APP_MODE:"TENANT",DATABASE_URL:"[URL database Tenant]",AUTH_SECRET:"[rahasia unik minimal 32 karakter]",FEDERATION_EXPORT_TOKEN:federationToken}}},{status:201});
   }catch(error){const message=error instanceof Error?error.message:"Provisioning gagal.";await db.update(tenantApplications).set({deploymentStatus:"FAILED",lastError:message,updatedAt:new Date()}).where(eq(tenantApplications.id,tenantId));await db.update(tenantProvisioningJobs).set({status:"FAILED",errorMessage:message,finishedAt:new Date()}).where(eq(tenantProvisioningJobs.id,jobId));return NextResponse.json({error:message,tenantId,jobId},{status:500});}
+}
+
+export async function DELETE(req:Request){
+  const auth=await guard();if(auth.response)return auth.response;
+  const id=Number(new URL(req.url).searchParams.get("id"));if(!Number.isSafeInteger(id)||id<1)return NextResponse.json({error:"ID aplikasi tidak valid."},{status:400});
+  const parsed=z.object({confirmationCode:z.string().min(2).max(80)}).safeParse(await req.json().catch(()=>null));if(!parsed.success)return NextResponse.json({error:"Ketik kode Jurusan untuk mengonfirmasi penghapusan permanen."},{status:400});
+  const db=requireDb();const[tenant]=await db.select().from(tenantApplications).where(eq(tenantApplications.id,id)).limit(1);if(!tenant)return NextResponse.json({error:"Aplikasi Jurusan tidak ditemukan."},{status:404});
+  if(parsed.data.confirmationCode.trim().toUpperCase()!==tenant.code.toUpperCase())return NextResponse.json({error:`Konfirmasi salah. Ketik kode ${tenant.code} dengan tepat.`},{status:409});
+  const configuration=(tenant.configuration??{}) as {deploymentTarget?:string};
+  let folder:{folderPath:string;folderDeleted:boolean}|null=null;
+  if(configuration.deploymentTarget==="LOCAL"||tenant.deploymentStatus==="TENANT_LOCAL_READY")try{folder=await deleteLocalTenantInstance({name:tenant.name,code:tenant.code,databaseName:tenant.databaseName});}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Folder Tenant lokal tidak dapat diverifikasi."},{status:409});}
+  const database=await deleteTenantDatabase(tenant.databaseName);
+  await db.transaction(async tx=>{
+    await tx.delete(tenantTemplateDistributions).where(eq(tenantTemplateDistributions.tenantId,id));
+    await tx.delete(tenantProvisioningJobs).where(eq(tenantProvisioningJobs.tenantId,id));
+    await tx.delete(federatedApplications).where(or(eq(federatedApplications.code,tenant.code),eq(federatedApplications.baseUrl,tenant.domain)));
+    await tx.delete(tenantApplications).where(eq(tenantApplications.id,id));
+  });
+  await audit({actorId:auth.session!.userId,action:"DELETE_TENANT_PERMANENT",subjectType:"TENANT_APPLICATION",subjectId:id,before:{id:tenant.id,code:tenant.code,name:tenant.name,domain:tenant.domain,databaseName:tenant.databaseName},after:{databaseDeleted:database.databaseDeleted,folderDeleted:folder?.folderDeleted??false}});
+  return NextResponse.json({deleted:true,message:`Aplikasi ${tenant.name} dan database ${tenant.databaseName} telah dihapus permanen.`,database,folder});
 }

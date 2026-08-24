@@ -36,3 +36,14 @@ export async function provisionTenantDatabase(databaseName:string,seed:TenantSee
     return {status:"DATABASE_READY",message:`Database ${target} dan admin awal berhasil dibuat.`,tables:tenantTables.filter(table=>available.has(table)).length};
   }finally{await connection.end();}
 }
+
+export async function deleteTenantDatabase(databaseName:string){
+  const adminUrl=process.env.MASTER_DATABASE_ADMIN_URL;
+  if(!adminUrl)throw new Error("MASTER_DATABASE_ADMIN_URL belum dikonfigurasi sehingga database Tenant tidak dapat dihapus dengan aman.");
+  const target=safeIdentifier(databaseName);
+  const masterDatabase=process.env.DATABASE_URL?new URL(process.env.DATABASE_URL).pathname.replace(/^\//,""):"";
+  if(masterDatabase&&target.toLowerCase()===masterDatabase.toLowerCase())throw new Error("Database Tenant sama dengan database Master dan tidak boleh dihapus.");
+  const connection=await mysql.createConnection(adminUrl);
+  try{await connection.query(`DROP DATABASE IF EXISTS \`${target}\``);return {databaseName:target,databaseDeleted:true};}
+  finally{await connection.end();}
+}
