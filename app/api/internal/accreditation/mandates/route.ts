@@ -9,7 +9,17 @@ import {getSession} from "@/src/lib/auth";
 import {hasRole,scopeAllows} from "@/src/lib/rbac";
 
 const input=z.object({frameworkId:z.number().int().positive(),indicatorId:z.number().int().positive(),responsibilityScope:z.enum(["UPPS","PRODI"])});
+const bulkInput=z.object({items:z.array(input.omit({responsibilityScope:true})).min(1).max(500),responsibilityScope:z.enum(["UPPS","PRODI"])});
 function canManage(session:NonNullable<Awaited<ReturnType<typeof getSession>>>){return hasRole(session,"ADMIN_DATA")||hasRole(session,"ADMIN_SYSTEM");}
+
+async function applyMandate(session:NonNullable<Awaited<ReturnType<typeof getSession>>>,data:z.infer<typeof input>){
+ const db=requireDb();
+ const[indicator]=await db.select({frameworkId:accreditationIndicators.frameworkId}).from(accreditationIndicators).where(and(eq(accreditationIndicators.id,data.indicatorId),eq(accreditationIndicators.status,"ACTIVE"))).limit(1);if(!indicator||indicator.frameworkId!==data.frameworkId)throw new Error("Indikator tidak termasuk instrumen tersebut.");
+ const assignments=await db.select({assignmentId:studyProgramAccreditationFrameworks.id,organizationId:studyPrograms.organizationId}).from(studyProgramAccreditationFrameworks).innerJoin(studyPrograms,eq(studyProgramAccreditationFrameworks.studyProgramId,studyPrograms.id)).where(and(eq(studyProgramAccreditationFrameworks.frameworkId,data.frameworkId),eq(studyProgramAccreditationFrameworks.assignmentStatus,"ACTIVE")));const allowed=assignments.filter(row=>scopeAllows(session,row.organizationId,null));if(!allowed.length)throw new Error("Tidak ada Prodi dalam scope Jurusan Anda yang menggunakan instrumen ini.");
+ const responsibleRole=data.responsibilityScope==="PRODI"?"KAPRODI":"ADMIN_DATA";
+ for(const assignment of allowed)await db.insert(accreditationIndicatorMandates).values({assignmentId:assignment.assignmentId,indicatorId:data.indicatorId,responsibilityScope:data.responsibilityScope,responsibleRole,validatorRole:"KAJUR",assignedBy:session.userId,status:"ACTIVE"}).onDuplicateKeyUpdate({set:{responsibilityScope:data.responsibilityScope,responsibleRole,validatorRole:"KAJUR",assignedBy:session.userId,status:"ACTIVE",updatedAt:new Date()}});
+ return {frameworkId:data.frameworkId,indicatorId:data.indicatorId,appliedToPrograms:allowed.length,responsibilityScope:data.responsibilityScope,responsibleRole,validatorRole:"KAJUR"};
+}
 
 export async function GET(){
   const session=await getSession();if(!session)return NextResponse.json({error:"Unauthorized"},{status:401});if(!canManage(session))return NextResponse.json({error:"Hanya Admin Jurusan yang dapat membagi mandat indikator."},{status:403});
@@ -22,11 +32,12 @@ export async function GET(){
 
 export async function POST(req:Request){
   const session=await getSession();if(!session)return NextResponse.json({error:"Unauthorized"},{status:401});if(!canManage(session))return NextResponse.json({error:"Hanya Admin Jurusan yang dapat membagi mandat indikator."},{status:403});
-  const parsed=input.safeParse(await req.json());if(!parsed.success)return NextResponse.json({error:parsed.error.flatten()},{status:400});const data=parsed.data,db=requireDb();
-  const[indicator]=await db.select({frameworkId:accreditationIndicators.frameworkId}).from(accreditationIndicators).where(and(eq(accreditationIndicators.id,data.indicatorId),eq(accreditationIndicators.status,"ACTIVE"))).limit(1);if(!indicator||indicator.frameworkId!==data.frameworkId)return NextResponse.json({error:"Indikator tidak termasuk instrumen tersebut."},{status:409});
-  const assignments=await db.select({assignmentId:studyProgramAccreditationFrameworks.id,organizationId:studyPrograms.organizationId}).from(studyProgramAccreditationFrameworks).innerJoin(studyPrograms,eq(studyProgramAccreditationFrameworks.studyProgramId,studyPrograms.id)).where(and(eq(studyProgramAccreditationFrameworks.frameworkId,data.frameworkId),eq(studyProgramAccreditationFrameworks.assignmentStatus,"ACTIVE")));const allowed=assignments.filter(row=>scopeAllows(session,row.organizationId,null));if(!allowed.length)return NextResponse.json({error:"Tidak ada Prodi dalam scope Jurusan Anda yang menggunakan instrumen ini."},{status:403});
-  const responsibleRole=data.responsibilityScope==="PRODI"?"KAPRODI":"ADMIN_DATA";
-  for(const assignment of allowed)await db.insert(accreditationIndicatorMandates).values({assignmentId:assignment.assignmentId,indicatorId:data.indicatorId,responsibilityScope:data.responsibilityScope,responsibleRole,validatorRole:"KAJUR",assignedBy:session.userId,status:"ACTIVE"}).onDuplicateKeyUpdate({set:{responsibilityScope:data.responsibilityScope,responsibleRole,validatorRole:"KAJUR",assignedBy:session.userId,status:"ACTIVE",updatedAt:new Date()}});
-  await audit({actorId:session.userId,action:"ASSIGN_ACCREDITATION_INDICATOR_MANDATE",subjectType:"ACCREDITATION_INDICATOR",subjectId:data.indicatorId,after:{frameworkId:data.frameworkId,appliedToAssignments:allowed.map(row=>row.assignmentId),responsibilityScope:data.responsibilityScope,responsibleRole,validatorRole:"KAJUR"}});
-  return NextResponse.json({frameworkId:data.frameworkId,indicatorId:data.indicatorId,appliedToPrograms:allowed.length,responsibilityScope:data.responsibilityScope,responsibleRole,validatorRole:"KAJUR"});
+  const parsed=input.safeParse(await req.json());if(!parsed.success)return NextResponse.json({error:parsed.error.flatten()},{status:400});
+  try{const result=await applyMandate(session,parsed.data);await audit({actorId:session.userId,action:"ASSIGN_ACCREDITATION_INDICATOR_MANDATE",subjectType:"ACCREDITATION_INDICATOR",subjectId:parsed.data.indicatorId,after:result});return NextResponse.json(result);}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Mandat gagal disimpan."},{status:409});}
+}
+
+export async function PUT(req:Request){
+ const session=await getSession();if(!session)return NextResponse.json({error:"Unauthorized"},{status:401});if(!canManage(session))return NextResponse.json({error:"Hanya Admin Jurusan yang dapat membagi mandat indikator."},{status:403});
+ const parsed=bulkInput.safeParse(await req.json());if(!parsed.success)return NextResponse.json({error:parsed.error.flatten()},{status:400});
+ try{const results=[];for(const item of parsed.data.items)results.push(await applyMandate(session,{...item,responsibilityScope:parsed.data.responsibilityScope}));await audit({actorId:session.userId,action:"BULK_ASSIGN_ACCREDITATION_INDICATOR_MANDATE",subjectType:"ACCREDITATION_INDICATOR",subjectId:parsed.data.items[0].indicatorId,after:{responsibilityScope:parsed.data.responsibilityScope,items:parsed.data.items,count:results.length}});return NextResponse.json({updated:results.length,appliedToPrograms:Math.max(...results.map(row=>row.appliedToPrograms))});}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Mandat massal gagal disimpan."},{status:409});}
 }
