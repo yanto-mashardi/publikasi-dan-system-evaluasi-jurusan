@@ -134,6 +134,7 @@ export const accreditationIndicatorMandates=mysqlTable("accreditation_indicator_
   id:id(),
   assignmentId:bigint("assignment_id",{mode:"number"}).notNull(),
   indicatorId:bigint("indicator_id",{mode:"number"}).notNull(),
+  period:varchar("period",{length:50}).notNull().default("LEGACY"),
   responsibilityScope:varchar("responsibility_scope",{length:30}).notNull(),
   responsibleRole:varchar("responsible_role",{length:100}).notNull(),
   validatorRole:varchar("validator_role",{length:100}).notNull().default("KAJUR"),
@@ -141,7 +142,7 @@ export const accreditationIndicatorMandates=mysqlTable("accreditation_indicator_
   status:varchar("status",{length:30}).notNull().default("ACTIVE"),
   createdAt:timestamp("created_at").defaultNow().notNull(),
   updatedAt:timestamp("updated_at").defaultNow().notNull(),
-},t=>[uniqueIndex("accreditation_indicator_mandate_uq").on(t.assignmentId,t.indicatorId)]);
+},t=>[uniqueIndex("accreditation_indicator_mandate_uq").on(t.assignmentId,t.indicatorId,t.period)]);
 
 export const accreditationAssessments=mysqlTable("accreditation_assessments",{
   id:id(),
