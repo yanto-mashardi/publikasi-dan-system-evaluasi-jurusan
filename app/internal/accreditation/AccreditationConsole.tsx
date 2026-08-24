@@ -97,10 +97,10 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
         {agencies.map(agency=><p className="registry-row" key={agency.id}><span><b>{agency.code}</b> — {agency.name} <span className="badge">{agency.status}</span></span>{manage&&agency.status==="ACTIVE"&&<button type="button" onClick={()=>void act(()=>request(`/api/internal/accreditation/agencies?id=${agency.id}`,"DELETE"))}>Arsipkan</button>}</p>)}
         {manage&&<form className="form" onSubmit={event=>{event.preventDefault();const data=formData(event);void act(()=>request("/api/internal/accreditation/agencies","POST",{code:String(data.get("code")),name:String(data.get("name")),agencyType:String(data.get("type")||"LAM"),websiteUrl:String(data.get("website")||"")||undefined}));}}>
           <h3>Tambah Lembaga</h3>
-          <input name="code" placeholder="LAM_INFOKOM" required/>
-          <input name="name" placeholder="Nama lembaga" required/>
-          <input name="type" defaultValue="LAM"/>
-          <input name="website" placeholder="https://..."/>
+          <label><span>Kode singkat</span><input name="code" placeholder="Contoh: LAM_TEKNIK" required/></label>
+          <label><span>Nama lembaga</span><input name="name" placeholder="Contoh: LAM Teknik" required/></label>
+          <input name="type" type="hidden" value="LAM"/>
+          <details className="optional-fields"><summary>Informasi tambahan (opsional)</summary><label><span>Website resmi</span><input name="website" type="url" placeholder="https://..."/></label></details>
           <button className="button">Tambah lembaga</button>
         </form>}
       </div>
@@ -129,18 +129,13 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
           {selected.lifecycleStatus==="ACTIVE"&&<p className="muted">Framework aktif bersifat immutable. Perubahan instrumen dilakukan melalui versi baru.</p>}
         </>}
         {manage&&<form className="form" onSubmit={event=>{event.preventDefault();const data=formData(event);void act(()=>request("/api/internal/accreditation/frameworks","POST",{agencyId:Number(data.get("agencyId")),code:String(data.get("code")),name:String(data.get("name")),instrumentYear:Number(data.get("year"))||undefined,instrumentType:String(data.get("instrumentType")||"")||undefined,educationLevel:String(data.get("educationLevel")||"")||undefined,modality:String(data.get("modality")||"TATAP_MUKA"),regulationReference:String(data.get("regulation")||"")||undefined,sourceUrl:String(data.get("sourceUrl")||"")||undefined,versionNumber:Number(data.get("version"))||1}));}}>
-          <h3>Tambah Framework</h3>
-          <select name="agencyId" required><option value="">Pilih lembaga</option>{agencies.filter(row=>row.status==="ACTIVE").map(row=><option key={row.id} value={row.id}>{row.name}</option>)}</select>
-          <input name="code" placeholder="LAM-X-2026-D3" required/>
-          <input name="name" placeholder="Nama instrumen" required/>
-          <input name="year" type="number" placeholder="Tahun"/>
-          <input name="instrumentType" placeholder="REGULER / PERPANJANGAN / ..."/>
-          <input name="educationLevel" placeholder="D3 / S1 / ..."/>
-          <input name="modality" defaultValue="TATAP_MUKA"/>
-          <input name="version" type="number" defaultValue="1"/>
-          <input name="regulation" placeholder="Referensi regulasi"/>
-          <input name="sourceUrl" placeholder="URL sumber resmi"/>
-          <button className="button">Tambah framework</button>
+          <h3>Buat Template Baru</h3><p className="muted">Isi empat data pokok. Template otomatis dibuat sebagai DRAFT agar dapat diisi dari Excel.</p>
+          <label><span>Lembaga akreditasi</span><select name="agencyId" required><option value="">Pilih LAM</option>{agencies.filter(row=>row.status==="ACTIVE").map(row=><option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+          <label><span>Kode template</span><input name="code" placeholder="Contoh: LAM-TEKNIK-D3-2025" required/></label>
+          <label><span>Nama instrumen</span><input name="name" placeholder="Contoh: Instrumen LAM Teknik D3 2025" required/></label>
+          <label><span>Jenjang</span><select name="educationLevel" required><option value="">Pilih jenjang</option><option>D3</option><option>D4</option><option>S1</option><option>S2</option><option>S3</option><option>PROFESI</option></select></label>
+          <details className="optional-fields"><summary>Detail instrumen (opsional)</summary><label><span>Tahun instrumen</span><input name="year" type="number" placeholder="2025"/></label><label><span>Jenis instrumen</span><input name="instrumentType" placeholder="REGULER"/></label><input name="modality" type="hidden" value="TATAP_MUKA"/><label><span>Versi</span><input name="version" type="number" defaultValue="1"/></label><label><span>Referensi regulasi</span><input name="regulation" placeholder="Nomor peraturan/SK"/></label><label><span>URL sumber resmi</span><input name="sourceUrl" type="url" placeholder="https://..."/></label></details>
+          <button className="button">Buat DRAFT & lanjut upload Excel</button>
         </form>}
       </div>
     </section>

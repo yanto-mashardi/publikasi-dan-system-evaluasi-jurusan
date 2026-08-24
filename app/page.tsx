@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { getPublicEvaluations, getPublicKpis, getPublicStatements } from "@/src/services/public-portal";
 import { getSiteIdentity } from "@/src/services/site-identity";
+import { redirect } from "next/navigation";
+import { getSession } from "@/src/lib/auth";
+import { isMasterApplication } from "@/src/lib/application-mode";
 
 export const dynamic = "force-dynamic";
 
 export default async function PublicHome() {
+  if(isMasterApplication())redirect((await getSession())?"/master":"/internal/login");
   const [kpis, statements, evaluations, identity] = await Promise.all([
     getPublicKpis(), getPublicStatements(), getPublicEvaluations(), getSiteIdentity(),
   ]);
