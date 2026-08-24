@@ -143,14 +143,18 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
   }
 
   async function deleteTemplate(row:Row){
-    if(!window.confirm(`Hapus template ${row.name}?`))return;
+    if(row.lifecycleStatus==="ACTIVE"){setMessage("Arsipkan template aktif terlebih dahulu sebelum menghapus permanen.");return;}
+    if(!window.confirm(`Hapus permanen template ${row.name} beserta seluruh indikator, variabel, rubrik, dan evidence yang belum digunakan? Tindakan ini tidak dapat dibatalkan.`))return;
     try{
       await request(`/api/internal/accreditation/frameworks?id=${row.id}`,"DELETE");
-      const remaining=frameworks.filter(item=>item.id!==row.id&&item.agencyId===row.agencyId&&item.lifecycleStatus!=="ARCHIVED");
-      if(remaining.length===0)await request(`/api/internal/accreditation/agencies?id=${row.agencyId}`,"DELETE");
       if(frameworkId===row.id){setFrameworkId(0);setStructure(emptyStructure);setScoring(emptyScoring);}
-      await load();setMessage(remaining.length===0?"Template dan LAM berhasil dihapus dari daftar aktif.":"Template berhasil dihapus.");
+      await load();setMessage("Template dan seluruh struktur yang belum digunakan berhasil dihapus permanen dari database.");
     }catch(error){setMessage(error instanceof Error?error.message:"Gagal menghapus template");}
+  }
+
+  async function archiveTemplate(row:Row){
+    if(!window.confirm(`Arsipkan template ${row.name}? Template tidak dapat dipilih untuk penugasan baru, tetapi histori tetap disimpan.`))return;
+    await act(()=>request(`/api/internal/accreditation/frameworks?id=${row.id}`,"PATCH",{lifecycleStatus:"ARCHIVED"}));
   }
 
   return <div className="section">
@@ -159,7 +163,7 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
     {manage&&<>
       <section className="card template-library">
         <div className="registry-heading"><div><span className="eyebrow">TEMPLATE TERSEDIA</span><h2>Template LAM yang sudah dibuat</h2></div></div>
-        {frameworks.filter(row=>row.lifecycleStatus!=="ARCHIVED").length===0?<p className="muted">Belum ada template. Gunakan formulir di bawah untuk membuat yang pertama.</p>:<div className="registry-list">{frameworks.filter(row=>row.lifecycleStatus!=="ARCHIVED").map(row=><div className="template-item" key={row.id}><button type="button" onClick={()=>setFrameworkId(row.id)}><span><b>{row.agencyName}</b> — {row.name}</span><small>{row.educationLevel??"Semua jenjang"} · {row.lifecycleStatus}</small></button><div className="registry-actions"><button type="button" onClick={()=>setFrameworkId(row.id)}>Buka</button><button type="button" onClick={()=>void editTemplate(row)}>Edit</button><button type="button" className="danger" onClick={()=>void deleteTemplate(row)}>Hapus</button></div></div>)}</div>}
+        {frameworks.length===0?<p className="muted">Belum ada template. Gunakan formulir di bawah untuk membuat yang pertama.</p>:<div className="registry-list">{frameworks.map(row=><div className="template-item" key={row.id}><button type="button" onClick={()=>setFrameworkId(row.id)}><span><b>{row.agencyName}</b> — {row.name}</span><small>{row.educationLevel??"Semua jenjang"} · {row.lifecycleStatus}</small></button><div className="registry-actions"><button type="button" onClick={()=>setFrameworkId(row.id)}>Buka</button>{row.lifecycleStatus!=="ARCHIVED"&&<button type="button" onClick={()=>void editTemplate(row)}>Edit</button>}{row.lifecycleStatus==="ACTIVE"?<button type="button" onClick={()=>void archiveTemplate(row)}>Arsipkan</button>:<button type="button" className="danger" onClick={()=>void deleteTemplate(row)}>Hapus permanen</button>}</div></div>)}</div>}
       </section>
       <section className="card simple-template-form">
         <h2>Tambah Template LAM</h2><p className="muted">Cukup tentukan LAM, nama template, jenjang, dan cara mengisinya.</p>
@@ -209,7 +213,8 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
             <p className="muted">Impor ditolak bila DRAFT sudah memiliki indikator. Untuk mengganti instrumen, buat versi DRAFT baru, impor, periksa, lalu aktifkan.</p>
           </div>}
           {manage&&selected.lifecycleStatus==="DRAFT"&&<button className="button" type="button" onClick={()=>void act(()=>request(`/api/internal/accreditation/frameworks?id=${selected.id}`,"PATCH",{lifecycleStatus:"ACTIVE"}))}>Aktifkan framework</button>}
-          {manage&&selected.lifecycleStatus==="ACTIVE"&&<button className="button" type="button" onClick={()=>void act(()=>request(`/api/internal/accreditation/frameworks?id=${selected.id}`,"DELETE"))}>Arsipkan framework</button>}
+          {manage&&selected.lifecycleStatus==="ACTIVE"&&<button className="button" type="button" onClick={()=>void archiveTemplate(selected)}>Arsipkan framework</button>}
+          {manage&&selected.lifecycleStatus!=="ACTIVE"&&<button className="button danger" type="button" onClick={()=>void deleteTemplate(selected)}>Hapus permanen</button>}
           {selected.lifecycleStatus==="ACTIVE"&&<p className="muted">Framework aktif bersifat immutable. Perubahan instrumen dilakukan melalui versi baru.</p>}
         </>}
         {manage&&<form className="form" onSubmit={event=>{event.preventDefault();const data=formData(event);void act(()=>request("/api/internal/accreditation/frameworks","POST",{agencyId:Number(data.get("agencyId")),code:String(data.get("code")),name:String(data.get("name")),instrumentYear:Number(data.get("year"))||undefined,instrumentType:String(data.get("instrumentType")||"")||undefined,educationLevel:String(data.get("educationLevel")||"")||undefined,modality:String(data.get("modality")||"TATAP_MUKA"),regulationReference:String(data.get("regulation")||"")||undefined,sourceUrl:String(data.get("sourceUrl")||"")||undefined,versionNumber:Number(data.get("version"))||1}));}}>

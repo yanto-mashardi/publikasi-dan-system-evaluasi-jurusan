@@ -1,8 +1,10 @@
-import { and,eq } from "drizzle-orm";
+import { and,eq,inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireDb } from "@/src/db";
-import { accreditationAgencies,accreditationClusters,accreditationCriteria,accreditationFrameworks } from "@/src/db/schema-accreditation";
+import { accreditationAgencies,accreditationAssessments,accreditationClusters,accreditationCriteria,accreditationEvidenceRequirements,accreditationFrameworks,accreditationIndicatorClusters,accreditationIndicatorMandates,accreditationIndicators,accreditationIndicatorVariables,accreditationScoringRubrics,studyProgramAccreditationFrameworks } from "@/src/db/schema-accreditation";
+import { accreditationIndicatorModuleSources } from "@/src/db/schema-evaluation-modules";
+import { tenantTemplateDistributions } from "@/src/db/schema-master";
 import { getSession } from "@/src/lib/auth";
 import { audit } from "@/src/lib/audit";
 import { can } from "@/src/lib/rbac";
@@ -26,4 +28,35 @@ if(before.lifecycleStatus==="DRAFT"&&p.data.lifecycleStatus==="ACTIVE"){
 }
 const changes={...p.data};if(p.data.lifecycleStatus==="ACTIVE"&&!p.data.effectiveFrom)changes.effectiveFrom=new Date().toISOString().slice(0,10);if(p.data.lifecycleStatus==="ARCHIVED"&&!p.data.effectiveTo)changes.effectiveTo=new Date().toISOString().slice(0,10);await db.update(accreditationFrameworks).set({...changes,updatedAt:new Date()}).where(eq(accreditationFrameworks.id,id));await audit({actorId:s.userId,action:"UPDATE_ACCREDITATION_FRAMEWORK",subjectType:"ACCREDITATION_FRAMEWORK",subjectId:id,before,after:changes});return NextResponse.json({id,...changes});}
 
-export async function DELETE(req:Request){const s=await getSession();if(!s)return NextResponse.json({error:"Unauthorized"},{status:401});if(!can(s,"accreditation.framework.manage"))return NextResponse.json({error:"Forbidden"},{status:403});const id=idFrom(req);if(!id)return NextResponse.json({error:"Invalid id"},{status:400});const db=requireDb();const[before]=await db.select().from(accreditationFrameworks).where(eq(accreditationFrameworks.id,id)).limit(1);if(!before)return NextResponse.json({error:"Framework tidak ditemukan."},{status:404});if(before.lifecycleStatus==="ARCHIVED")return NextResponse.json({id,lifecycleStatus:"ARCHIVED"});await db.update(accreditationFrameworks).set({lifecycleStatus:"ARCHIVED",effectiveTo:new Date().toISOString().slice(0,10),updatedAt:new Date()}).where(eq(accreditationFrameworks.id,id));await audit({actorId:s.userId,action:"ARCHIVE_ACCREDITATION_FRAMEWORK",subjectType:"ACCREDITATION_FRAMEWORK",subjectId:id,before,after:{lifecycleStatus:"ARCHIVED"}});return NextResponse.json({id,lifecycleStatus:"ARCHIVED"});}
+export async function DELETE(req:Request){
+ const s=await getSession();if(!s)return NextResponse.json({error:"Unauthorized"},{status:401});
+ if(!can(s,"accreditation.framework.manage"))return NextResponse.json({error:"Forbidden"},{status:403});
+ const id=idFrom(req);if(!id)return NextResponse.json({error:"Invalid id"},{status:400});
+ const db=requireDb();
+ const[before]=await db.select().from(accreditationFrameworks).where(eq(accreditationFrameworks.id,id)).limit(1);
+ if(!before)return NextResponse.json({error:"Framework tidak ditemukan."},{status:404});
+ if(before.lifecycleStatus==="ACTIVE")return NextResponse.json({error:"Framework ACTIVE harus diarsipkan terlebih dahulu sebelum dihapus permanen."},{status:409});
+ const[assignment]=await db.select({id:studyProgramAccreditationFrameworks.id}).from(studyProgramAccreditationFrameworks).where(eq(studyProgramAccreditationFrameworks.frameworkId,id)).limit(1);
+ const[distribution]=await db.select({id:tenantTemplateDistributions.id}).from(tenantTemplateDistributions).where(eq(tenantTemplateDistributions.frameworkCode,before.code)).limit(1);
+ if(assignment||distribution)return NextResponse.json({error:"Framework masih memiliki penugasan Prodi atau riwayat distribusi Tenant. Lepaskan relasi tersebut sebelum menghapus permanen."},{status:409});
+ const indicatorRows=await db.select({id:accreditationIndicators.id}).from(accreditationIndicators).where(eq(accreditationIndicators.frameworkId,id));
+ const indicatorIds=indicatorRows.map(row=>row.id);
+ const[assessment]=indicatorIds.length?await db.select({id:accreditationAssessments.id}).from(accreditationAssessments).where(inArray(accreditationAssessments.indicatorId,indicatorIds)).limit(1):[];
+ const[mandate]=indicatorIds.length?await db.select({id:accreditationIndicatorMandates.id}).from(accreditationIndicatorMandates).where(inArray(accreditationIndicatorMandates.indicatorId,indicatorIds)).limit(1):[];
+ if(assessment||mandate)return NextResponse.json({error:"Framework masih memiliki mandat atau hasil assessment dan tidak dapat dihapus permanen."},{status:409});
+ await db.transaction(async tx=>{
+  if(indicatorIds.length){
+   await tx.delete(accreditationIndicatorClusters).where(inArray(accreditationIndicatorClusters.indicatorId,indicatorIds));
+   await tx.delete(accreditationEvidenceRequirements).where(inArray(accreditationEvidenceRequirements.indicatorId,indicatorIds));
+   await tx.delete(accreditationScoringRubrics).where(inArray(accreditationScoringRubrics.indicatorId,indicatorIds));
+   await tx.delete(accreditationIndicatorVariables).where(inArray(accreditationIndicatorVariables.indicatorId,indicatorIds));
+  }
+  await tx.delete(accreditationIndicatorModuleSources).where(eq(accreditationIndicatorModuleSources.frameworkId,id));
+  await tx.delete(accreditationIndicators).where(eq(accreditationIndicators.frameworkId,id));
+  await tx.delete(accreditationCriteria).where(eq(accreditationCriteria.frameworkId,id));
+  await tx.delete(accreditationClusters).where(eq(accreditationClusters.frameworkId,id));
+  await tx.delete(accreditationFrameworks).where(eq(accreditationFrameworks.id,id));
+ });
+ await audit({actorId:s.userId,action:"DELETE_ACCREDITATION_FRAMEWORK_PERMANENT",subjectType:"ACCREDITATION_FRAMEWORK",subjectId:id,before,after:null});
+ return NextResponse.json({id,deleted:true});
+}
