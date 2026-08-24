@@ -1,4 +1,4 @@
-import { eq,or } from "drizzle-orm";
+import { and,eq,inArray,or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireDb } from "@/src/db";
@@ -11,8 +11,9 @@ import { audit } from "@/src/lib/audit";
 import { provisionTenantDatabase } from "@/src/services/tenant-provisioning";
 import { randomBytes } from "node:crypto";
 import { encryptFederationToken } from "@/src/services/federation-security";
+import { accreditationFrameworks } from "@/src/db/schema-accreditation";
 
-const input=z.object({code:z.string().min(2).max(80).regex(/^[A-Za-z][A-Za-z0-9_-]+$/),name:z.string().min(3).max(255),domain:z.string().url(),databaseName:z.string().regex(/^[A-Za-z][A-Za-z0-9_]{2,63}$/),organizationType:z.enum(["UPPS","JURUSAN","FAKULTAS"]).default("UPPS"),programs:z.array(z.object({code:z.string().min(2).max(50),name:z.string().min(3).max(255),level:z.string().max(50).optional(),frameworkCode:z.string().max(120).optional()})).min(1),adminName:z.string().min(3).max(255),adminEmail:z.string().email(),adminPassword:z.string().min(10).max(128)});
+const input=z.object({code:z.string().min(2).max(80).regex(/^[A-Za-z][A-Za-z0-9_-]+$/),name:z.string().min(3).max(255),domain:z.string().url(),databaseName:z.string().regex(/^[A-Za-z][A-Za-z0-9_]{2,63}$/),organizationType:z.enum(["UPPS","JURUSAN","FAKULTAS"]).default("UPPS"),programs:z.array(z.object({code:z.string().min(2).max(50),name:z.string().min(3).max(255),level:z.string().max(50).optional(),frameworkCode:z.string().min(2).max(120)})).min(1),adminName:z.string().min(3).max(255),adminEmail:z.string().email(),adminPassword:z.string().min(10).max(128)});
 async function guard(){const session=await getSession();if(!session)return {response:NextResponse.json({error:"Unauthorized"},{status:401})};if(!isMasterApplication())return {response:NextResponse.json({error:"Endpoint provisioning hanya aktif pada APP_MODE=MASTER."},{status:409})};if(!can(session,"system.configure"))return {response:NextResponse.json({error:"Forbidden"},{status:403})};return {session};}
 
 export async function GET(){const auth=await guard();if(auth.response)return auth.response;const rows=await requireDb().select().from(tenantApplications);return NextResponse.json(rows.map(({encryptedFederationToken,...row})=>({...row,federationConfigured:Boolean(encryptedFederationToken)})));}
@@ -21,6 +22,7 @@ export async function POST(req:Request){
   const auth=await guard();if(auth.response)return auth.response;
   const parsed=input.safeParse(await req.json());if(!parsed.success)return NextResponse.json({error:parsed.error.flatten()},{status:400});
   const data={...parsed.data,code:parsed.data.code.toUpperCase(),domain:parsed.data.domain.replace(/\/$/,"")};const db=requireDb(),federationToken=randomBytes(32).toString("base64url");
+  const requestedFrameworks=[...new Set(data.programs.map(program=>program.frameworkCode))];const activeFrameworks=await db.select({code:accreditationFrameworks.code}).from(accreditationFrameworks).where(and(inArray(accreditationFrameworks.code,requestedFrameworks),eq(accreditationFrameworks.lifecycleStatus,"ACTIVE")));const available=new Set(activeFrameworks.map(row=>row.code)),missing=requestedFrameworks.filter(code=>!available.has(code));if(missing.length)return NextResponse.json({error:`Framework belum tersedia atau belum ACTIVE: ${missing.join(", ")}. Selesaikan menu 1. Template LAM terlebih dahulu.`},{status:409});
   const[[duplicate],[federationDuplicate]]=await Promise.all([db.select({id:tenantApplications.id}).from(tenantApplications).where(or(eq(tenantApplications.code,data.code),eq(tenantApplications.domain,data.domain),eq(tenantApplications.databaseName,data.databaseName))).limit(1),db.select({id:federatedApplications.id}).from(federatedApplications).where(or(eq(federatedApplications.code,data.code),eq(federatedApplications.baseUrl,data.domain))).limit(1)]);if(duplicate||federationDuplicate)return NextResponse.json({error:"Kode, domain, atau nama database sudah digunakan Tenant/federasi lain."},{status:409});
   const result=await db.insert(tenantApplications).values({code:data.code,name:data.name,domain:data.domain,databaseName:data.databaseName,organizationType:data.organizationType,deploymentStatus:"PROVISIONING",encryptedFederationToken:encryptFederationToken(federationToken),configuration:{programs:data.programs,adminEmail:data.adminEmail}});
   const tenantId=Number(result[0].insertId);const job=await db.insert(tenantProvisioningJobs).values({tenantId,action:"CREATE_TENANT",status:"RUNNING",requestedBy:auth.session!.userId,startedAt:new Date(),requestSnapshot:{code:data.code,name:data.name,domain:data.domain,databaseName:data.databaseName,programs:data.programs,adminEmail:data.adminEmail}});const jobId=Number(job[0].insertId);

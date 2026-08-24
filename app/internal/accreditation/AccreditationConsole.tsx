@@ -111,6 +111,7 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
           <option value={0}>Pilih framework</option>
           {frameworks.filter(row=>row.lifecycleStatus!=="ARCHIVED").map(row=><option key={row.id} value={row.id}>{row.agencyCode} · {row.name} · v{row.versionNumber}</option>)}
         </select>
+        {manage&&!selected&&<div style={{display:"grid",gap:4,marginTop:12,padding:12,borderLeft:"4px solid #c08a31",borderRadius:7,background:"#fff7df",fontSize:11}}><b>Untuk upload Excel</b><span>Buat framework, lalu pilih framework berstatus DRAFT pada daftar di atas. Tombol unduh format dan kolom upload akan muncul otomatis.</span></div>}
         {selected&&<>
           <p className="muted">{selected.instrumentType??"—"} · {selected.educationLevel??"semua jenjang"} · {selected.lifecycleStatus}</p>
           {manage&&selected.lifecycleStatus==="DRAFT"&&<div className="excel-import">
@@ -207,7 +208,7 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
       </section>
     </>}
 
-    <section className="card">
+    {!manage&&<section className="card">
       <h2>Template Indikator Program Studi</h2>
       <p className="muted">Super Admin menyediakan LAM dan template global. Kaprodi memilih template utama, menggantinya dengan template lain, atau melepaskan template dari Prodinya sendiri.</p>
       {assignments.map(row=><p className="registry-row" key={row.id}><span><b>{row.studyProgramName}</b> → {row.agencyCode} / {row.frameworkName} <span className="badge">{row.assignmentStatus}{row.isPrimary?" · UTAMA":""}</span></span>{assign&&row.assignmentStatus==="ACTIVE"&&<button type="button" onClick={()=>void act(()=>request(`/api/internal/accreditation/assignments?id=${row.id}`,"DELETE"))}>Lepas template</button>}</p>)}
@@ -219,6 +220,6 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
         <button className="button">Pilih sebagai template utama</button>
       </form>}
       <p className="muted">LAM Teknik reference seed tidak ditautkan otomatis. Assignment dilakukan setelah cakupan resmi Prodi diverifikasi.</p>
-    </section>
+    </section>}
   </div>;
 }
