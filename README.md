@@ -163,6 +163,8 @@ Permission saja tidak cukup untuk tindakan formal. Evaluation, approval, publica
 
 ## Quick Local Simulation
 
+Untuk membuat instance Jurusan dari aplikasi Master, ikuti [panduan provisioning lokal dan VPS](docs/PROVISIONING-LOCAL-VPS.md).
+
 Prasyarat: Node.js 22.13+ dan MySQL 8.x.
 
 ```bash
