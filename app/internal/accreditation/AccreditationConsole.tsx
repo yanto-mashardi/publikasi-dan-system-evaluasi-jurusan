@@ -101,9 +101,16 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
       const newAgencyName=String(data.get("newAgencyName")||"").trim();
       if(!agencyId){
         if(!newAgencyName)throw new Error("Pilih LAM yang ada atau isi nama LAM baru.");
-        agencyCode=`LAM_${slug(newAgencyName).replace(/^LAM_?/,"")||"BARU"}`;
-        const agency=await request("/api/internal/accreditation/agencies","POST",{code:agencyCode,name:newAgencyName,agencyType:"LAM"});
-        agencyId=Number(agency.id);
+        const normalizedName=newAgencyName.toLocaleLowerCase("id-ID");
+        const existingAgency=agencies.find(row=>String(row.name).trim().toLocaleLowerCase("id-ID")===normalizedName);
+        if(existingAgency){
+          agencyId=Number(existingAgency.id);agencyCode=String(existingAgency.code);
+          if(existingAgency.status!=="ACTIVE")await request(`/api/internal/accreditation/agencies?id=${agencyId}`,"PATCH",{status:"ACTIVE",name:newAgencyName});
+        }else{
+          agencyCode=`LAM_${slug(newAgencyName).replace(/^LAM_?/,"")||"BARU"}`;
+          const agency=await request("/api/internal/accreditation/agencies","POST",{code:agencyCode,name:newAgencyName,agencyType:"LAM"});
+          agencyId=Number(agency.id);
+        }
       }
       const name=String(data.get("name")||"").trim();
       const educationLevel=String(data.get("educationLevel")||"").trim();
@@ -134,13 +141,24 @@ export default function AccreditationConsole({permissions}:{permissions:string[]
     setMessage("Template aktif tidak diubah langsung. Versi DRAFT baru sudah dibuat agar riwayat tetap aman.");
   }
 
+  async function deleteTemplate(row:Row){
+    if(!window.confirm(`Hapus template ${row.name}?`))return;
+    try{
+      await request(`/api/internal/accreditation/frameworks?id=${row.id}`,"DELETE");
+      const remaining=frameworks.filter(item=>item.id!==row.id&&item.agencyId===row.agencyId&&item.lifecycleStatus!=="ARCHIVED");
+      if(remaining.length===0)await request(`/api/internal/accreditation/agencies?id=${row.agencyId}`,"DELETE");
+      if(frameworkId===row.id){setFrameworkId(0);setStructure(emptyStructure);setScoring(emptyScoring);}
+      await load();setMessage(remaining.length===0?"Template dan LAM berhasil dihapus dari daftar aktif.":"Template berhasil dihapus.");
+    }catch(error){setMessage(error instanceof Error?error.message:"Gagal menghapus template");}
+  }
+
   return <div className="section">
     {message&&<div className="card" style={{marginBottom:16}}>{message}</div>}
 
     {manage&&<>
       <section className="card template-library">
         <div className="registry-heading"><div><span className="eyebrow">TEMPLATE TERSEDIA</span><h2>Template LAM yang sudah dibuat</h2></div></div>
-        {frameworks.filter(row=>row.lifecycleStatus!=="ARCHIVED").length===0?<p className="muted">Belum ada template. Gunakan formulir di bawah untuk membuat yang pertama.</p>:<div className="registry-list">{frameworks.filter(row=>row.lifecycleStatus!=="ARCHIVED").map(row=><div className="template-item" key={row.id}><button type="button" onClick={()=>setFrameworkId(row.id)}><span><b>{row.agencyName}</b> — {row.name}</span><small>{row.educationLevel??"Semua jenjang"} · {row.lifecycleStatus}</small></button><div className="registry-actions"><button type="button" onClick={()=>setFrameworkId(row.id)}>Buka</button><button type="button" onClick={()=>void editTemplate(row)}>Edit</button><button type="button" className="danger" onClick={()=>{if(window.confirm(`Hapus template ${row.name}?`))void act(()=>request(`/api/internal/accreditation/frameworks?id=${row.id}`,"DELETE"));}}>Hapus</button></div></div>)}</div>}
+        {frameworks.filter(row=>row.lifecycleStatus!=="ARCHIVED").length===0?<p className="muted">Belum ada template. Gunakan formulir di bawah untuk membuat yang pertama.</p>:<div className="registry-list">{frameworks.filter(row=>row.lifecycleStatus!=="ARCHIVED").map(row=><div className="template-item" key={row.id}><button type="button" onClick={()=>setFrameworkId(row.id)}><span><b>{row.agencyName}</b> — {row.name}</span><small>{row.educationLevel??"Semua jenjang"} · {row.lifecycleStatus}</small></button><div className="registry-actions"><button type="button" onClick={()=>setFrameworkId(row.id)}>Buka</button><button type="button" onClick={()=>void editTemplate(row)}>Edit</button><button type="button" className="danger" onClick={()=>void deleteTemplate(row)}>Hapus</button></div></div>)}</div>}
       </section>
       <section className="card simple-template-form">
         <h2>Tambah Template LAM</h2><p className="muted">Cukup tentukan LAM, nama template, jenjang, dan cara mengisinya.</p>
