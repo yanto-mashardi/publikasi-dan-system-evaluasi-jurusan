@@ -4,13 +4,14 @@ import {z} from "zod";
 import {requireDb} from "@/src/db";
 import {accreditationCriteria,accreditationFrameworks,accreditationIndicatorMandates,accreditationIndicators,studyProgramAccreditationFrameworks} from "@/src/db/schema-accreditation";
 import {organizations,studyPrograms} from "@/src/db/schema";
-import {accreditationIndicatorModuleSources} from "@/src/db/schema-evaluation-modules";
+import {accreditationIndicatorModuleSources,evaluationPeriods} from "@/src/db/schema-evaluation-modules";
 import {audit} from "@/src/lib/audit";
 import {getSession} from "@/src/lib/auth";
 import {hasRole,scopeAllows} from "@/src/lib/rbac";
 
 const input=z.object({frameworkId:z.number().int().positive(),indicatorId:z.number().int().positive(),period:z.string().regex(/^\d{4}\/\d{4}-(GANJIL|GENAP)$/),responsibilityScope:z.enum(["UPPS","PRODI"])});
 const bulkInput=z.object({items:z.array(input.omit({responsibilityScope:true})).min(1).max(500),responsibilityScope:z.enum(["UPPS","PRODI"])});
+const migrateInput=z.object({period:z.string().regex(/^\d{4}\/\d{4}-(GANJIL|GENAP)$/),sourcePeriod:z.string().default("LEGACY")});
 function canManage(session:NonNullable<Awaited<ReturnType<typeof getSession>>>){return hasRole(session,"ADMIN_DATA")||hasRole(session,"ADMIN_SYSTEM");}
 
 async function applyMandate(session:NonNullable<Awaited<ReturnType<typeof getSession>>>,data:z.infer<typeof input>){
@@ -42,4 +43,14 @@ export async function PUT(req:Request){
  const session=await getSession();if(!session)return NextResponse.json({error:"Unauthorized"},{status:401});if(!canManage(session))return NextResponse.json({error:"Hanya Admin Jurusan yang dapat membagi mandat indikator."},{status:403});
  const parsed=bulkInput.safeParse(await req.json());if(!parsed.success)return NextResponse.json({error:parsed.error.flatten()},{status:400});
  try{const results=[];for(const item of parsed.data.items)results.push(await applyMandate(session,{...item,responsibilityScope:parsed.data.responsibilityScope}));await audit({actorId:session.userId,action:"BULK_ASSIGN_ACCREDITATION_INDICATOR_MANDATE",subjectType:"ACCREDITATION_INDICATOR",subjectId:parsed.data.items[0].indicatorId,after:{responsibilityScope:parsed.data.responsibilityScope,items:parsed.data.items,count:results.length}});return NextResponse.json({updated:results.length,appliedToPrograms:Math.max(...results.map(row=>row.appliedToPrograms))});}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Mandat massal gagal disimpan."},{status:409});}
+}
+
+export async function PATCH(req:Request){
+ const session=await getSession();if(!session)return NextResponse.json({error:"Unauthorized"},{status:401});if(!canManage(session))return NextResponse.json({error:"Hanya Admin Jurusan yang dapat memindahkan mandat periode."},{status:403});
+ const parsed=migrateInput.safeParse(await req.json());if(!parsed.success)return NextResponse.json({error:parsed.error.flatten()},{status:400});const db=requireDb();
+ const periods=await db.select().from(evaluationPeriods).where(eq(evaluationPeriods.label,parsed.data.period)),allowedPeriods=periods.filter(row=>scopeAllows(session,row.organizationId,null));if(!allowedPeriods.length)return NextResponse.json({error:"Periode tujuan tidak ditemukan dalam scope Jurusan."},{status:404});
+ const assignments=await db.select({id:studyProgramAccreditationFrameworks.id,organizationId:studyPrograms.organizationId}).from(studyProgramAccreditationFrameworks).innerJoin(studyPrograms,eq(studyPrograms.id,studyProgramAccreditationFrameworks.studyProgramId)).where(eq(studyProgramAccreditationFrameworks.assignmentStatus,"ACTIVE")),allowedIds=new Set(assignments.filter(row=>scopeAllows(session,row.organizationId,null)).map(row=>row.id));
+ const source=await db.select().from(accreditationIndicatorMandates).where(and(eq(accreditationIndicatorMandates.period,parsed.data.sourcePeriod),eq(accreditationIndicatorMandates.status,"ACTIVE"))),visible=source.filter(row=>allowedIds.has(row.assignmentId));if(!visible.length)return NextResponse.json({error:`Tidak ada mandat aktif pada sumber ${parsed.data.sourcePeriod}.`},{status:409});
+ for(const row of visible)await db.insert(accreditationIndicatorMandates).values({assignmentId:row.assignmentId,indicatorId:row.indicatorId,period:parsed.data.period,responsibilityScope:row.responsibilityScope,responsibleRole:row.responsibleRole,validatorRole:row.validatorRole,assignedBy:session.userId,status:"ACTIVE"}).onDuplicateKeyUpdate({set:{responsibilityScope:row.responsibilityScope,responsibleRole:row.responsibleRole,validatorRole:row.validatorRole,assignedBy:session.userId,status:"ACTIVE",updatedAt:new Date()}});
+ await audit({actorId:session.userId,action:"COPY_ACCREDITATION_MANDATES_TO_PERIOD",subjectType:"EVALUATION_PERIOD",subjectId:allowedPeriods[0].id,after:{sourcePeriod:parsed.data.sourcePeriod,targetPeriod:parsed.data.period,count:visible.length}});return NextResponse.json({copied:visible.length,period:parsed.data.period});
 }
