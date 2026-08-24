@@ -3,8 +3,8 @@ import { FormEvent,useEffect,useMemo,useState } from "react";
 type Row=Record<string,any>;
 const text=(v:FormDataEntryValue|null)=>String(v??"");
 const num=(v:FormDataEntryValue|null)=>Number(v);
-export default function ResourceConsole({permissions,focus="",period="",studyProgramId=0}:{permissions:string[];focus?:string;period?:string;studyProgramId?:number}){
- const has=(p:string)=>permissions.includes(p);const manage=has("resources.manage");const contribute=has("resources.contribute")||manage;const evaluate=has("evaluation.create");
+export default function ResourceConsole({permissions,focus="",period="",studyProgramId=0,allowInput=true}:{permissions:string[];focus?:string;period?:string;studyProgramId?:number;allowInput?:boolean}){
+ const has=(p:string)=>permissions.includes(p);const manage=has("resources.manage")&&allowInput;const contribute=(has("resources.contribute")||manage)&&allowInput;const evaluate=has("evaluation.create")&&allowInput;
  const[orgs,setOrgs]=useState<Row[]>([]),[programs,setPrograms]=useState<Row[]>([]),[labs,setLabs]=useState<Row[]>([]),[personnel,setPersonnel]=useState<Row[]>([]),[research,setResearch]=useState<Row[]>([]),[pkm,setPkm]=useState<Row[]>([]),[studentStats,setStudentStats]=useState<Row[]>([]),[graduateStats,setGraduateStats]=useState<Row[]>([]),[cooperations,setCooperations]=useState<Row[]>([]);
  const[labId,setLabId]=useState(0),[equipment,setEquipment]=useState<Row[]>([]),[usage,setUsage]=useState<Row[]>([]),[maintenance,setMaintenance]=useState<Row[]>([]),[k3l,setK3l]=useState<Row[]>([]),[message,setMessage]=useState("");
  async function request(url:string,method="GET",body?:unknown){const r=await fetch(url,{method,headers:body?{"content-type":"application/json"}:undefined,body:body?JSON.stringify(body):undefined});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(typeof d.error==="string"?d.error:"Operasi gagal");return d;}
