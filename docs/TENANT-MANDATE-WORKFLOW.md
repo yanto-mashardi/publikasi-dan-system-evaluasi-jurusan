@@ -13,7 +13,7 @@ Master menetapkan LAM, framework, struktur indikator, variabel, dan rubrik yang 
 5. Kajur memvalidasi atau mengembalikan hasil.
 6. Hanya Kajur yang dapat mempublikasikan hasil berstatus disetujui dan bertanda kandidat publik.
 
-Pemetaan disimpan per pasangan assignment instrumen Prodi dan indikator. Nama indikator tetap berasal dari template yang didistribusikan Master. Perubahan mandat dicatat dalam audit log.
+Admin memilih mandat satu kali per indikator dan instrumen. Sistem menerapkannya otomatis kepada seluruh Prodi dalam Jurusan tersebut yang menggunakan instrumen yang sama. Pemetaan tidak menjangkau Jurusan lain dan tidak mengubah template global Master. Secara teknis, mandat direplikasi ke assignment setiap Prodi agar pembatasan scope tetap dapat ditegakkan. Perubahan mandat dicatat dalam audit log.
 
 ## Batas akses
 
