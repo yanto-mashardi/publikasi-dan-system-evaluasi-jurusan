@@ -130,6 +130,19 @@ export const studyProgramAccreditationFrameworks=mysqlTable("study_program_accre
   updatedAt:timestamp("updated_at").defaultNow().notNull(),
 },t=>[uniqueIndex("study_program_framework_uq").on(t.studyProgramId,t.frameworkId)]);
 
+export const accreditationIndicatorMandates=mysqlTable("accreditation_indicator_mandates",{
+  id:id(),
+  assignmentId:bigint("assignment_id",{mode:"number"}).notNull(),
+  indicatorId:bigint("indicator_id",{mode:"number"}).notNull(),
+  responsibilityScope:varchar("responsibility_scope",{length:30}).notNull(),
+  responsibleRole:varchar("responsible_role",{length:100}).notNull(),
+  validatorRole:varchar("validator_role",{length:100}).notNull().default("KAJUR"),
+  assignedBy:bigint("assigned_by",{mode:"number"}).notNull(),
+  status:varchar("status",{length:30}).notNull().default("ACTIVE"),
+  createdAt:timestamp("created_at").defaultNow().notNull(),
+  updatedAt:timestamp("updated_at").defaultNow().notNull(),
+},t=>[uniqueIndex("accreditation_indicator_mandate_uq").on(t.assignmentId,t.indicatorId)]);
+
 export const accreditationAssessments=mysqlTable("accreditation_assessments",{
   id:id(),
   assignmentId:bigint("assignment_id",{mode:"number"}).notNull(),

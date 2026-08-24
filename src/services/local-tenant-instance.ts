@@ -73,3 +73,13 @@ export async function deleteLocalTenantInstance(input:{name:string;code:string;d
     throw error;
   }
 }
+
+export async function syncLocalTenantInstance(input:{name:string;code:string;databaseName:string}){
+  const {source,target}=resolveLocalTenantTarget(input.name,input.code);
+  const environment=await readFile(path.join(target,".env.local"),"utf8");
+  const expectedMode=/^APP_MODE=TENANT\s*$/m.test(environment);
+  const expectedDatabase=new RegExp(`^DATABASE_URL=.*\\/${input.databaseName.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}\\s*$`,"m").test(environment);
+  if(!expectedMode||!expectedDatabase)throw new Error(`Folder ${target} bukan Tenant ${input.databaseName}; sinkronisasi dibatalkan.`);
+  await cp(source,target,{recursive:true,force:true,filter:canCopy});
+  return {folderPath:target,codeSynchronized:true};
+}

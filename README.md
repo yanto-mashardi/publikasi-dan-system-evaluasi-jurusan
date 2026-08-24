@@ -165,6 +165,8 @@ Permission saja tidak cukup untuk tindakan formal. Evaluation, approval, publica
 
 Untuk membuat instance Jurusan dari aplikasi Master, ikuti [panduan provisioning lokal dan VPS](docs/PROVISIONING-LOCAL-VPS.md).
 
+Untuk pembagian akun, scope Prodi/Jurusan, mandat indikator, validasi Kajur, dan publikasi, ikuti [alur mandat kerja Tenant](docs/TENANT-MANDATE-WORKFLOW.md).
+
 Prasyarat: Node.js 22.13+ dan MySQL 8.x.
 
 ```bash
