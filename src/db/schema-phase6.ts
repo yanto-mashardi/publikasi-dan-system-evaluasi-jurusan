@@ -102,6 +102,7 @@ export const personnel=mysqlTable("personnel",{
   functionalPosition:varchar("functional_position",{length:150}),
   educationLevel:varchar("education_level",{length:80}),
   expertise:varchar("expertise",{length:500}),
+  googleScholarId:varchar("google_scholar_id",{length:100}),
   status:varchar("status",{length:30}).notNull().default("ACTIVE"),
   createdAt:timestamp("created_at").defaultNow().notNull(),
   updatedAt:timestamp("updated_at").defaultNow().notNull(),
