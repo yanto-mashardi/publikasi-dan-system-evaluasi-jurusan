@@ -3,5 +3,5 @@
 .resource-console[data-focus="FACILITIES_K3L"]>.module-facilities,
 .resource-console[data-focus="RESEARCH_PKM"]>.module-research-pkm,
 .resource-console[data-focus="STUDENTS_GRADUATES"]>.module-students-graduates,
-.resource-console[data-focus="COOPERATION"]>.module-cooperation{display:block!important}
+.resource-console[data-focus="COOPERATION"]>.module-cooperation{display:grid!important}
 .module-section{margin-bottom:22px}
