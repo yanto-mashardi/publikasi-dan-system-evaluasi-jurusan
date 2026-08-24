@@ -49,6 +49,34 @@ export async function provisionTenantDatabase(databaseName:string,seed:TenantSee
   }finally{await connection.end();}
 }
 
+export async function syncTenantDatabaseSchema(databaseName:string){
+  const adminUrl=process.env.MASTER_DATABASE_ADMIN_URL;
+  const sourceUrl=process.env.DATABASE_URL;
+  if(!adminUrl||!sourceUrl)throw new Error("Koneksi admin database Master belum dikonfigurasi.");
+  const target=safeIdentifier(databaseName),source=safeIdentifier(new URL(sourceUrl).pathname.replace(/^\//,""));
+  if(target.toLowerCase()===source.toLowerCase())throw new Error("Database Tenant tidak boleh sama dengan database Master.");
+  const connection=await mysql.createConnection(adminUrl);
+  try{
+    const[existing]=await connection.query<mysql.RowDataPacket[]>("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=?",[source]);
+    const available=new Set(existing.map(row=>String(row.TABLE_NAME)));
+    let createdTables=0;
+    for(const table of tenantTables){
+      if(!available.has(table))continue;
+      const[found]=await connection.query<mysql.RowDataPacket[]>("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?",[target,table]);
+      if(!found.length){await connection.query(`CREATE TABLE \`${target}\`.\`${table}\` LIKE \`${source}\`.\`${table}\``);createdTables+=1;}
+    }
+    const[periodColumn]=await connection.query<mysql.RowDataPacket[]>("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME='accreditation_indicator_mandates' AND COLUMN_NAME='period'",[target]);
+    if(!periodColumn.length)await connection.query(`ALTER TABLE \`${target}\`.accreditation_indicator_mandates ADD COLUMN period varchar(50) NOT NULL DEFAULT 'LEGACY' AFTER indicator_id`);
+    const[indexRows]=await connection.query<mysql.RowDataPacket[]>("SELECT COLUMN_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=? AND TABLE_NAME='accreditation_indicator_mandates' AND INDEX_NAME='accreditation_indicator_mandate_uq' ORDER BY SEQ_IN_INDEX",[target]);
+    const indexColumns=indexRows.map(row=>String(row.COLUMN_NAME));
+    if(indexColumns.join(",")!=="assignment_id,indicator_id,period"){
+      if(indexRows.length)await connection.query(`ALTER TABLE \`${target}\`.accreditation_indicator_mandates DROP INDEX accreditation_indicator_mandate_uq`);
+      await connection.query(`ALTER TABLE \`${target}\`.accreditation_indicator_mandates ADD UNIQUE INDEX accreditation_indicator_mandate_uq (assignment_id,indicator_id,period)`);
+    }
+    return {databaseName:target,schemaSynchronized:true,createdTables};
+  }finally{await connection.end();}
+}
+
 export async function deleteTenantDatabase(databaseName:string){
   const adminUrl=process.env.MASTER_DATABASE_ADMIN_URL;
   if(!adminUrl)throw new Error("MASTER_DATABASE_ADMIN_URL belum dikonfigurasi sehingga database Tenant tidak dapat dihapus dengan aman.");
