@@ -158,6 +158,7 @@ export const accreditationAssessments=mysqlTable("accreditation_assessments",{
   calculationNote:text("calculation_note"),
   analysis:text("analysis"),
   evaluationNote:text("evaluation_note"),
+  followupPlan:text("followup_plan"),
   ledNote:text("led_note"),
   publicationDecision:varchar("publication_decision",{length:30}).notNull().default("INTERNAL_ONLY"),
   workflowStatus:varchar("workflow_status",{length:30}).notNull().default("DRAFT"),
