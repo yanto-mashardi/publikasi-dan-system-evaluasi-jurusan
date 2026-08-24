@@ -152,6 +152,10 @@ export const accreditationAssessments=mysqlTable("accreditation_assessments",{
   actualValue:varchar("actual_value",{length:255}),
   calculatedValue:varchar("calculated_value",{length:255}),
   calculatedScore:decimal("calculated_score",{precision:10,scale:4}),
+  moduleCalculatedScore:decimal("module_calculated_score",{precision:10,scale:4}),
+  moduleSnapshotIds:json("module_snapshot_ids"),
+  scoreSource:varchar("score_source",{length:30}).notNull().default("MODULE"),
+  manualOverrideReason:text("manual_override_reason"),
   weightedScore:decimal("weighted_score",{precision:14,scale:4}),
   matchedRubricId:bigint("matched_rubric_id",{mode:"number"}),
   calculationSnapshot:json("calculation_snapshot"),
@@ -167,18 +171,6 @@ export const accreditationAssessments=mysqlTable("accreditation_assessments",{
   createdAt:timestamp("created_at").defaultNow().notNull(),
   updatedAt:timestamp("updated_at").defaultNow().notNull(),
 },t=>[uniqueIndex("accreditation_assessment_period_uq").on(t.assignmentId,t.indicatorId,t.period)]);
-
-export const accreditationAssessmentValues=mysqlTable("accreditation_assessment_values",{
-  id:id(),
-  assessmentId:bigint("assessment_id",{mode:"number"}).notNull(),
-  variableId:bigint("variable_id",{mode:"number"}).notNull(),
-  rawValue:text("raw_value"),
-  numericValue:decimal("numeric_value",{precision:20,scale:6}),
-  booleanValue:boolean("boolean_value"),
-  recordedBy:bigint("recorded_by",{mode:"number"}).notNull(),
-  createdAt:timestamp("created_at").defaultNow().notNull(),
-  updatedAt:timestamp("updated_at").defaultNow().notNull(),
-},t=>[uniqueIndex("accreditation_assessment_variable_uq").on(t.assessmentId,t.variableId)]);
 
 export const accreditationAssessmentSources=mysqlTable("accreditation_assessment_sources",{
   id:id(),

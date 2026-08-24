@@ -14,10 +14,10 @@ export default async function InternalHome(){
  const duty=isKaprodi?"Isi dan evaluasi indikator yang dimandatkan hanya dalam scope Program Studi Anda.":isKajur?"Validasi hasil pengisian dan tentukan publikasi pada lingkup UPPS/Jurusan.":"Buat akun penerima mandat dan petakan indikator kepada Prodi atau Jurusan/UPPS.";
  const steps=session.roles.includes("ADMIN_DATA")?[
   {no:"01",title:"Atur akun dan pembagian indikator",text:"Buat akun Kaprodi dan Kajur, kemudian petakan setiap indikator sekali sebagai tanggung jawab Prodi atau Jurusan/UPPS.",links:[["Kelola akun & mandat","/internal/mandates"]]},
-  {no:"02",title:"Isi bagian Jurusan/UPPS",text:"Lengkapi indikator yang dimandatkan ke Jurusan/UPPS beserta data, evidence, analisis, evaluasi, dan catatan LED.",links:[["Buka cockpit akreditasi","/internal/accreditation/cockpit"],["Sumber daya Jurusan","/internal/resources"]]},
+  {no:"02",title:"Perbarui modul evaluasi",text:"Lengkapi data operasional lalu buat snapshot semester sebagai sumber perhitungan indikator.",links:[["Modul evaluasi semester","/internal/modules"],["Sumber daya Jurusan","/internal/resources"]]},
   {no:"03",title:"Pantau pekerjaan",text:"Pantau pengisian Prodi dan bagian Jurusan. Hasil yang diajukan akan masuk ke Kajur untuk validasi.",links:[["Workflow dan evaluasi","/internal/workflow"]]},
  ]:isKaprodi?[
-  {no:"01",title:"Lengkapi data Program Studi",text:"Isi kurikulum, OBE, mahasiswa, lulusan, serta data Prodi yang menjadi evidence.",links:[["Akademik & OBE","/internal/academic"]]},
+  {no:"01",title:"Lengkapi data Program Studi",text:"Isi kurikulum, OBE, mahasiswa, lulusan, lalu perbarui snapshot modul evaluasi semester.",links:[["Akademik & OBE","/internal/academic"],["Modul evaluasi semester","/internal/modules"]]},
   {no:"02",title:"Isi indikator mandat Prodi",text:"Cockpit hanya mengizinkan Anda menyimpan indikator yang ditugaskan kepada Prodi sendiri.",links:[["Cockpit akreditasi","/internal/accreditation/cockpit"]]},
   {no:"03",title:"Ajukan kepada Kajur",text:"Lengkapi perhitungan, analisis, evaluasi, dan LED, kemudian ajukan untuk divalidasi Kajur.",links:[["Workflow evaluasi","/internal/workflow"]]},
  ]:[

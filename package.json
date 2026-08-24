@@ -17,6 +17,7 @@
     "db:seed":"tsx scripts/seed-foundation.ts && tsx scripts/seed-accreditation.ts",
     "db:seed:demo":"tsx scripts/seed-demo.ts",
     "db:seed:accreditation":"tsx scripts/seed-accreditation.ts",
+    "db:seed:modules":"tsx scripts/seed-evaluation-modules.ts",
     "db:audit":"tsx scripts/audit-database.ts",
     "architecture:audit":"tsx scripts/audit-architecture.ts",
     "workflow:audit":"tsx scripts/audit-workflow.ts",
