@@ -1,0 +1,11 @@
+import {eq} from "drizzle-orm";
+import {NextResponse} from "next/server";
+import {z} from "zod";
+import {requireDb} from "@/src/db";
+import {personnel,scholarlyPublications} from "@/src/db/schema-phase6";
+import {getSession} from "@/src/lib/auth";
+import {canReadResourceScope,canWriteResourceScope} from "@/src/services/resource-scope";
+
+const createInput=z.object({personnelId:z.number().int().positive(),title:z.string().min(3).max(1000),venue:z.string().max(500).optional(),publicationYear:z.number().int().min(1900).max(2200).optional(),citationCount:z.number().int().min(0).default(0),sourceUrl:z.string().url().max(1000).optional().or(z.literal(""))});
+export async function GET(){const session=await getSession();if(!session)return NextResponse.json({error:"Unauthorized"},{status:401});const db=requireDb(),rows=await db.select({id:scholarlyPublications.id,personnelId:scholarlyPublications.personnelId,title:scholarlyPublications.title,venue:scholarlyPublications.venue,publicationYear:scholarlyPublications.publicationYear,citationCount:scholarlyPublications.citationCount,source:scholarlyPublications.source,sourceUrl:scholarlyPublications.sourceUrl,organizationId:personnel.organizationId,studyProgramId:personnel.studyProgramId}).from(scholarlyPublications).innerJoin(personnel,eq(personnel.id,scholarlyPublications.personnelId));return NextResponse.json(rows.filter(row=>canReadResourceScope(session,row.organizationId,row.studyProgramId)).map(({organizationId:_,studyProgramId:__,...row})=>row));}
+export async function POST(req:Request){const session=await getSession();if(!session)return NextResponse.json({error:"Unauthorized"},{status:401});const parsed=createInput.safeParse(await req.json());if(!parsed.success)return NextResponse.json({error:parsed.error.flatten()},{status:400});const db=requireDb(),[owner]=await db.select().from(personnel).where(eq(personnel.id,parsed.data.personnelId)).limit(1);if(!owner||!canWriteResourceScope(session,owner.organizationId,owner.studyProgramId,false))return NextResponse.json({error:"Dosen berada di luar scope akun."},{status:403});const result=await db.insert(scholarlyPublications).values({...parsed.data,source:"MANUAL",sourceUrl:parsed.data.sourceUrl||null});return NextResponse.json({id:Number(result[0].insertId),source:"MANUAL"},{status:201});}

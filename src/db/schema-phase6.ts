@@ -1,4 +1,4 @@
-import { bigint, date, decimal, int, json, mysqlTable, primaryKey, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { bigint, boolean, date, decimal, int, json, mysqlTable, primaryKey, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 const id=(name="id")=>bigint(name,{mode:"number"}).autoincrement().primaryKey();
 
@@ -103,10 +103,45 @@ export const personnel=mysqlTable("personnel",{
   educationLevel:varchar("education_level",{length:80}),
   expertise:varchar("expertise",{length:500}),
   googleScholarId:varchar("google_scholar_id",{length:100}),
+  lecturerStatus:varchar("lecturer_status",{length:40}),
+  originUnit:varchar("origin_unit",{length:255}),
+  scholarCitationCount:int("scholar_citation_count"),
+  scholarHIndex:int("scholar_h_index"),
+  scholarI10Index:int("scholar_i10_index"),
+  scholarLastSyncedAt:timestamp("scholar_last_synced_at"),
   status:varchar("status",{length:30}).notNull().default("ACTIVE"),
   createdAt:timestamp("created_at").defaultNow().notNull(),
   updatedAt:timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const scholarlyPublications=mysqlTable("scholarly_publications",{
+  id:id(),
+  personnelId:bigint("personnel_id",{mode:"number"}).notNull(),
+  title:varchar("title",{length:1000}).notNull(),
+  venue:varchar("venue",{length:500}),
+  publicationYear:int("publication_year"),
+  citationCount:int("citation_count").notNull().default(0),
+  source:varchar("source",{length:40}).notNull().default("MANUAL"),
+  externalId:varchar("external_id",{length:255}),
+  sourceUrl:varchar("source_url",{length:1000}),
+  createdAt:timestamp("created_at").defaultNow().notNull(),
+  updatedAt:timestamp("updated_at").defaultNow().notNull(),
+},table=>[uniqueIndex("scholarly_publication_source_uq").on(table.personnelId,table.source,table.externalId)]);
+
+export const personnelSemesterAssignments=mysqlTable("personnel_semester_assignments",{
+  id:id(),
+  personnelId:bigint("personnel_id",{mode:"number"}).notNull(),
+  studyProgramId:bigint("study_program_id",{mode:"number"}).notNull(),
+  period:varchar("period",{length:50}).notNull(),
+  courseCode:varchar("course_code",{length:80}).notNull(),
+  courseName:varchar("course_name",{length:500}).notNull(),
+  credits:decimal("credits",{precision:5,scale:2}),
+  expertiseAligned:boolean("expertise_aligned").notNull().default(false),
+  bokAligned:boolean("bok_aligned").notNull().default(false),
+  tridharmaActive:boolean("tridharma_active").notNull().default(false),
+  createdAt:timestamp("created_at").defaultNow().notNull(),
+  updatedAt:timestamp("updated_at").defaultNow().notNull(),
+},table=>[uniqueIndex("personnel_semester_assignment_uq").on(table.personnelId,table.studyProgramId,table.period,table.courseCode)]);
 
 export const researchProjects=mysqlTable("research_projects",{
   id:id(),
@@ -114,6 +149,7 @@ export const researchProjects=mysqlTable("research_projects",{
   studyProgramId:bigint("study_program_id",{mode:"number"}),
   title:varchar("title",{length:700}).notNull(),
   year:int("year").notNull(),
+  period:varchar("period",{length:50}),
   principalPersonnelId:bigint("principal_personnel_id",{mode:"number"}),
   fundingSource:varchar("funding_source",{length:255}),
   scheme:varchar("scheme",{length:255}),
@@ -130,6 +166,7 @@ export const communityServiceProjects=mysqlTable("community_service_projects",{
   studyProgramId:bigint("study_program_id",{mode:"number"}),
   title:varchar("title",{length:700}).notNull(),
   year:int("year").notNull(),
+  period:varchar("period",{length:50}),
   leadPersonnelId:bigint("lead_personnel_id",{mode:"number"}),
   partner:varchar("partner",{length:255}),
   fundingSource:varchar("funding_source",{length:255}),
